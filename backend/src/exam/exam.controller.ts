@@ -1,0 +1,27 @@
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { ExamService } from './exam.service';
+
+@Controller('exam')
+export class ExamController {
+  constructor(private exam: ExamService) {}
+
+  @Get(':id/questions')
+  async getQuestions(@Param('id') id: string) {
+    return this.exam.getQuestions(id);
+  }
+
+  @Post(':id/submit')
+  async submitExam(@Param('id') id: string, @Body() body: { answers: Record<string, number> }) {
+    return this.exam.submitAnswers(id, body.answers);
+  }
+
+  @Post(':id/progress')
+  async saveProgress(@Param('id') id: string, @Body() body: { questionId: string, answer: any }) {
+    return this.exam.saveProgress(id, body.questionId, body.answer);
+  }
+
+  @Get(':id/kvs-credentials')
+  async getKvsCredentials(@Param('id') id: string) {
+    return this.exam.getKvsCredentials(id);
+  }
+}

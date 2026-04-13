@@ -1,0 +1,53 @@
+﻿node.exe : Prisma schema 
+loaded from prisma\schema
+.prisma.
+위치 줄:1 문자:1
++ & "C:\Program Files\nod
+ejs/node.exe" "C:\Program
+ Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (Prisma schema l...\   
+ schema.prisma.:Strin    
+g) [], RemoteExcepti    o
+n
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+Error: Prisma schema vali
+dation - (get-config wasm
+)
+Error code: P1012
+error: The datasource pro
+perty `url` is no longer 
+supported in schema files
+. Move connection URLs fo
+r Migrate to `prisma.conf
+ig.ts` and pass either `a
+dapter` for a direct data
+base connection or `accel
+erateUrl` for Accelerate 
+to the `PrismaClient` con
+structor. See https://pri
+s.ly/d/config-datasource 
+and https://pris.ly/d/pri
+sma7-client-config
+  -->  prisma\schema.pris
+ma:13
+   | 
+12 |   provider = "postgr
+esql"
+13 |   url      = env("DA
+TABASE_URL")
+   | 
+
+Validation Error Count: 1
+[Context: getConfig]
+
+Prisma CLI Version : 7.7.
+0
+
