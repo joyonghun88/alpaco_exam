@@ -1,29 +1,18 @@
 version: 1
 applications:
-  - frontend:
+  - appRoot: frontend
+    frontend:
       phases:
         preBuild:
           commands:
-            - cd frontend
             - npm ci
         build:
           commands:
             - npm run build
       artifacts:
-        baseDirectory: frontend/dist
+        baseDirectory: dist
         files:
           - '**/*'
       cache:
         paths:
-          - frontend/node_modules/**/*
-  - backend:
-      phases:
-        preBuild:
-          commands:
-            - cd backend
-            - npm ci
-        build:
-          commands:
-            - npm run build
-      # 참고: NestJS 백엔드는 일반적으로 App Runner, ECS 또는 Lambda로 배포됩니다.
-      # 이 빌드 설정은 Amplify에서 빌드 아티팩트를 생성하기 위한 예시입니다.
+          - node_modules/**/*
