@@ -113,10 +113,13 @@ export default function Sandbox() {
       const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=MASTER`);
       const creds = await res.json();
 
+      console.log('KVS Master Credentials received:', creds);
       const signalingClient = new SignalingClient({
         channelARN: creds.channelArn,
         region: creds.region,
         role: Role.MASTER,
+        endpoint: creds.signalingEndpoint,
+        channelEndpoint: creds.signalingEndpoint,
         credentials: {
           accessKeyId: creds.accessKeyId,
           secretAccessKey: creds.secretAccessKey,

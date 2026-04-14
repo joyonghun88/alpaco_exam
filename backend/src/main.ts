@@ -24,11 +24,8 @@ async function bootstrap() {
 
   // 2. CORS 설정
   app.enableCors({
-    origin: [
-      /https?:\/\/localhost:\d+/,
-      'https://main.d1jp391cw5p5y.amplifyapp.com',
-    ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
