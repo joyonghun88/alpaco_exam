@@ -89,6 +89,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         };
 
         let offerRetryInterval: any = null;
+        let offerSent = false;
 
         signalingClient.on('open', async () => {
           console.log(`[KVS Admin] Viewer signaling opened. Channel: ${creds.channelArn}`);
@@ -96,16 +97,17 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
           setLoading(false);
           
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
           const sendOffer = async () => {
             if (peerConnection.connectionState === 'connected') {
-                if (offerRetryInterval) clearInterval(offerRetryInterval);
-                return;
+              clearInterval(offerRetryInterval);
+              return;
             }
             console.log('[KVS Admin] Creating and sending offer...');
-            peerConnection.restartIce(); // Try fresh ICE for each retry if not connecting
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             signalingClient.sendSdpOffer(peerConnection.localDescription as any);
+            offerSent = true;
           };
 
           await sendOffer();
