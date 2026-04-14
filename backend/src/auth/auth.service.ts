@@ -16,9 +16,25 @@ export class AuthService {
       throw new HttpException('유효하지 않은 초대코드입니다. 확인 후 다시 입력해 주세요.', HttpStatus.UNAUTHORIZED);
     }
 
-    // 2. 시험 시작 가능 여부 확인 (READY 상태에서 시작 시각 전이면 대기)
     const now = new Date();
     const room = participant.room;
+
+    // A. 이미 시험을 제출한 인원인지 확인
+    if (participant.status === 'SUBMITTED') {
+      throw new HttpException('이미 시험을 제출하셨습니다. 재입장이 불가능합니다.', HttpStatus.FORBIDDEN);
+    }
+
+    // B. 고사장 상태가 '종료'인 경우
+    if (room.status === 'FINISHED') {
+      throw new HttpException('이미 종료된 고사장입니다. 입장이 불가능합니다.', HttpStatus.FORBIDDEN);
+    }
+
+    // C. 종료 시간이 지난 경우 (상태가 종료가 아니더라도)
+    if (now > room.endAt) {
+      throw new HttpException('시험 응시 시간이 종료되었습니다.', HttpStatus.FORBIDDEN);
+    }
+
+    // D. 시험 시작 가능 여부 확인 (READY 상태에서 시작 시각 전이면 대기)
     if (room.status === 'READY' && now < room.startAt) {
       throw new HttpException({
         type: 'NOT_STARTED_YET',
