@@ -406,7 +406,7 @@ export class AdminService {
     });
   }
 
-  async updateRoom(id: string, data: { roomName?: string, durationMinutes?: number, startAt?: string, isRequireCamera?: boolean }) {
+  async updateRoom(id: string, data: { roomName?: string, durationMinutes?: number, startAt?: string, endAt?: string, isRequireCamera?: boolean }) {
     const current = await this.prisma.examRoom.findUnique({ where: { id } });
     if (!current) throw new Error("고사장 정보가 존재하지 않습니다.");
     
@@ -417,14 +417,24 @@ export class AdminService {
 
     const updateData: any = { ...data };
     
-    // 시간 관련 수정 패치
-    if (data.startAt || data.durationMinutes) {
+    // 시간 관련 로직: 종료시간(endAt)이 직접 들어왔을 때 최우선 처리
+    if (data.endAt || data.startAt || data.durationMinutes !== undefined) {
       const newStart = data.startAt ? new Date(data.startAt) : current.startAt;
-      const newDuration = data.durationMinutes !== undefined ? data.durationMinutes : current.durationMinutes;
       
-      updateData.startAt = newStart;
-      updateData.durationMinutes = newDuration;
-      updateData.endAt = new Date(newStart.getTime() + newDuration * 60 * 1000);
+      if (data.endAt) {
+        // 종료 시각이 입력된 경우 -> duration을 역산
+        const newEnd = new Date(data.endAt);
+        const diffMs = newEnd.getTime() - newStart.getTime();
+        updateData.startAt = newStart;
+        updateData.endAt = newEnd;
+        updateData.durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+      } else {
+        // 종료 시각이 없고 소요시간이나 시작시각만 바뀐 경우 -> 이전 로직(시작+소요) 유지
+        const newDuration = data.durationMinutes !== undefined ? data.durationMinutes : current.durationMinutes;
+        updateData.startAt = newStart;
+        updateData.durationMinutes = newDuration;
+        updateData.endAt = new Date(newStart.getTime() + newDuration * 60 * 1000);
+      }
     }
     
     return this.prisma.examRoom.update({

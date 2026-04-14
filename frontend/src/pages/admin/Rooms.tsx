@@ -23,11 +23,11 @@ interface Room {
 export default function Rooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [exams, setExams] = useState<any[]>([]);
-  const [form, setForm] = useState({ examId: '', roomName: '', durationMinutes: 60, startAt: '', isRequireCamera: false });
+  const [form, setForm] = useState({ examId: '', roomName: '', durationMinutes: 60, startAt: '', endAt: '', isRequireCamera: false });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [previewRoom, setPreviewRoom] = useState<Room | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ roomName: '', durationMinutes: 60, startAt: '', isRequireCamera: false });
+  const [editForm, setEditForm] = useState({ roomName: '', durationMinutes: 60, startAt: '', endAt: '', isRequireCamera: false });
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -54,13 +54,14 @@ export default function Rooms() {
         body: JSON.stringify(form)
       });
       if (res.ok) {
-        setForm({ examId: '', roomName: '', durationMinutes: 60, startAt: '', isRequireCamera: false });
+        setForm({ examId: '', roomName: '', durationMinutes: 60, startAt: '', endAt: '', isRequireCamera: false });
         fetchData();
       }
     } catch {}
   };
 
   const getLocalISO = (dateStr: string) => {
+    if (!dateStr) return '';
     const d = new Date(dateStr);
     const offset = d.getTimezoneOffset() * 60000;
     const local = new Date(d.getTime() - offset);
@@ -73,6 +74,7 @@ export default function Rooms() {
       roomName: room.roomName,
       durationMinutes: room.durationMinutes,
       startAt: getLocalISO(room.startAt),
+      endAt: getLocalISO(room.endAt),
       isRequireCamera: room.isRequireCamera
     });
   };
@@ -219,22 +221,24 @@ export default function Rooms() {
                            {room.status}
                          </div>
                          {editingId === room.id ? (
-                           <div className="flex items-center space-x-3">
-                             <input 
-                               value={editForm.roomName}
-                               onChange={e => setEditForm({...editForm, roomName: e.target.value})}
-                               className="text-2xl font-black text-primary bg-bg-section border-b-2 border-primary outline-none px-2 py-1 rounded-t-lg"
-                               autoFocus
-                             />
-                             <label className="flex items-center space-x-2 cursor-pointer bg-bg-section px-3 py-1 rounded-xl border border-button-outline">
-                                <input 
-                                  type="checkbox"
-                                  checked={editForm.isRequireCamera}
-                                  onChange={e => setEditForm({...editForm, isRequireCamera: e.target.checked})}
-                                  className="w-4 h-4 text-primary rounded"
-                                />
-                                <span className="text-[10px] font-black text-text-caption flex items-center"><Video size={12} className="mr-1" /> 카메라 필수</span>
-                             </label>
+                           <div className="space-y-4 w-full">
+                             <div className="flex items-center space-x-3">
+                               <input 
+                                 value={editForm.roomName}
+                                 onChange={e => setEditForm({...editForm, roomName: e.target.value})}
+                                 className="flex-1 text-2xl font-black text-primary bg-bg-section border-b-2 border-primary outline-none px-2 py-1 rounded-t-lg"
+                                 autoFocus
+                               />
+                               <label className="flex items-center space-x-2 cursor-pointer bg-bg-section px-3 py-1 rounded-xl border border-button-outline">
+                                  <input 
+                                    type="checkbox"
+                                    checked={editForm.isRequireCamera}
+                                    onChange={e => setEditForm({...editForm, isRequireCamera: e.target.checked})}
+                                    className="w-4 h-4 text-primary rounded"
+                                  />
+                                  <span className="text-[10px] font-black text-text-caption flex items-center"><Video size={12} className="mr-1" /> 카메라 필수</span>
+                               </label>
+                             </div>
                            </div>
                          ) : (
                            <div className="flex items-center space-x-3">
@@ -300,43 +304,72 @@ export default function Rooms() {
                          <p className="text-sm font-black text-primary">{room._count.participants}명</p>
                       </div>
                       <div className="space-y-1">
-                         <p className="text-[10px] font-black text-text-caption uppercase tracking-widest flex items-center"><Clock size={12} className="mr-1" /> 시험 시간</p>
-                         {editingId === room.id ? (
-                           <div className="flex items-center space-x-1">
-                             <input 
-                               type="number"
-                               value={editForm.durationMinutes}
-                               onChange={e => setEditForm({...editForm, durationMinutes: Number(e.target.value)})}
-                               className="w-16 bg-bg-section border border-primary rounded px-2 py-1 text-sm font-black outline-none"
-                             />
-                             <span className="text-xs font-bold text-text-caption">분</span>
-                           </div>
-                         ) : (
-                           <p className="text-sm font-bold text-text-title">{room.durationMinutes}분</p>
-                         )}
-                      </div>
-                      <div className="space-y-1">
                          <p className="text-[10px] font-black text-text-caption uppercase tracking-widest flex items-center"><CheckCircle2 size={12} className="mr-1" /> 문항 수</p>
                          <p className="text-sm font-bold text-text-title">{room.exam.questions.length}문항</p>
                       </div>
                    </div>
 
-                   <div className="flex items-center space-x-6 text-[11px] font-bold text-text-caption">
-                      <div className="flex items-center">
-                        <Calendar size={14} className="mr-1.5 opacity-50" /> 
-                        {editingId === room.id ? (
-                           <input 
-                             type="datetime-local"
-                             value={editForm.startAt}
-                             onChange={e => setEditForm({...editForm, startAt: e.target.value})}
-                             className="bg-bg-section border border-primary rounded px-2 py-1 text-[10px] font-black outline-none"
-                           />
-                        ) : (
-                          <>{formatDate(room.startAt)} 오픈</>
-                        )}
-                      </div>
-                      <div className="w-1 h-1 bg-button-outline rounded-full" />
-                      <div>최종 마감: {formatDate(room.endAt)}</div>
+                   {/* 시간 정밀 제어 영역 */}
+                   <div className="flex flex-wrap items-center gap-y-4 gap-x-8 text-[11px] font-bold text-text-caption bg-bg-section/30 p-5 rounded-[2rem] border border-button-outline group-hover:border-primary/20 transition-all">
+                       <div className="flex items-center space-x-2">
+                         <Calendar size={14} className="text-primary" />
+                         <span className="font-black uppercase text-[9px] tracking-tighter opacity-70">운영 기간 (한국 시간)</span>
+                       </div>
+                       
+                       <div className="flex items-center space-x-3">
+                         {editingId === room.id ? (
+                            <div className="flex flex-wrap items-center gap-3">
+                               <div className="flex flex-col">
+                                 <span className="text-[8px] font-black mb-1 opacity-50">시작</span>
+                                 <input 
+                                   type="datetime-local"
+                                   value={editForm.startAt}
+                                   onChange={e => setEditForm({...editForm, startAt: e.target.value})}
+                                   className="bg-white border border-primary rounded-xl px-3 py-2 text-[10px] font-black outline-none shadow-sm focus:ring-4 focus:ring-primary/5"
+                                 />
+                               </div>
+                               <span className="text-text-caption mt-4">~</span>
+                               <div className="flex flex-col">
+                                 <span className="text-[8px] font-black mb-1 opacity-50 text-primary">마감 (종료기준)</span>
+                                 <input 
+                                   type="datetime-local"
+                                   value={editForm.endAt}
+                                   onChange={e => setEditForm({...editForm, endAt: e.target.value})}
+                                   className="bg-white border border-primary rounded-xl px-3 py-2 text-[10px] font-black outline-none shadow-sm focus:ring-4 focus:ring-primary/5"
+                                 />
+                               </div>
+                            </div>
+                         ) : (
+                           <div className="flex items-center space-x-2 text-text-title font-black text-xs">
+                             <span className="bg-white px-3 py-1.5 rounded-xl border border-button-outline shadow-sm">{formatDate(room.startAt)}</span>
+                             <span className="text-text-caption opacity-30">~</span>
+                             <span className="bg-primary/5 text-primary px-3 py-1.5 rounded-xl border border-primary/20 shadow-sm">{formatDate(room.endAt)}</span>
+                           </div>
+                         )}
+                       </div>
+
+                       <div className="flex items-center space-x-2 border-l border-button-outline pl-6 md:ml-auto">
+                          <Clock size={14} className="text-text-caption" />
+                          <div className="flex flex-col">
+                            {editingId === room.id ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-[8px] font-black opacity-50 uppercase">제한시간</span>
+                                <input 
+                                  type="number"
+                                  value={editForm.durationMinutes}
+                                  onChange={e => setEditForm({...editForm, durationMinutes: Number(e.target.value)})}
+                                  className="w-16 bg-white border border-button-outline rounded-lg px-2 py-1 text-[10px] font-black"
+                                />
+                                <span className="text-[10px]">분</span>
+                              </div>
+                            ) : (
+                              <>
+                                <span className="text-[8px] font-black opacity-50 uppercase tracking-tighter">Operating Time</span>
+                                <span className="font-black text-text-title text-xs">{room.durationMinutes}분 (자동계산)</span>
+                              </>
+                            )}
+                          </div>
+                       </div>
                    </div>
                 </div>
 
@@ -403,7 +436,7 @@ export default function Rooms() {
                                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                     {typeof eq.question.content === 'string' ? eq.question.content : (eq.question.content as any).text || ''}
                                  </ReactMarkdown>
-                              </div>
+                               </div>
                               {eq.question.type === 'MULTIPLE_CHOICE' && (
                                  <div className="space-y-4">
                                     {(eq.question.content as any).options?.map((opt: string, idx: number) => (
