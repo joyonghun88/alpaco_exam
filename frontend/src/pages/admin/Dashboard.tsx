@@ -88,14 +88,28 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
           }
         };
 
+        let offerRetryInterval: any = null;
+
         signalingClient.on('open', async () => {
-          console.log(`[KVS Admin] Viewer signaling opened, creating and sending offer. Channel: ${creds.channelArn}`);
+          console.log(`[KVS Admin] Viewer signaling opened. Channel: ${creds.channelArn}`);
           setStatus('수렴자 기기 연결 요청...');
           setLoading(false);
+          
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
-          const offer = await peerConnection.createOffer();
-          await peerConnection.setLocalDescription(offer);
-          signalingClient.sendSdpOffer(peerConnection.localDescription as any);
+          const sendOffer = async () => {
+            if (peerConnection.connectionState === 'connected') {
+                if (offerRetryInterval) clearInterval(offerRetryInterval);
+                return;
+            }
+            console.log('[KVS Admin] Creating and sending offer...');
+            peerConnection.restartIce(); // Try fresh ICE for each retry if not connecting
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            signalingClient.sendSdpOffer(peerConnection.localDescription as any);
+          };
+
+          await sendOffer();
+          offerRetryInterval = setInterval(sendOffer, 5000);
         });
 
         signalingClient.on('peerJoined', (clientId: string) => {
