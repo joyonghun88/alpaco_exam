@@ -179,21 +179,22 @@ export class AwsService {
    */
   async getTemporaryCredentials() {
     try {
-      const command = new GetSessionTokenCommand({
-        DurationSeconds: 3600,
-      });
-      const { Credentials } = await this.stsClient.send(command);
-      if (!Credentials) {
-        throw new InternalServerErrorException('AWS 자격 증명을 가저올 수 없습니다.');
+      // 1. 현재 서버(EC2 IAM Role 등)가 사용 중인 자격 증명을 직접 확인
+      const creds = await this.stsClient.config.credentials();
+      
+      if (!creds) {
+        throw new InternalServerErrorException('AWS 자격 증명을 활성화할 수 없습니다.');
       }
+
       return {
-        accessKeyId: Credentials.AccessKeyId,
-        secretAccessKey: Credentials.SecretAccessKey,
-        sessionToken: Credentials.SessionToken,
+        accessKeyId: creds.accessKeyId,
+        secretAccessKey: creds.secretAccessKey,
+        sessionToken: creds.sessionToken,
         region: this.region,
       };
     } catch (error) {
-      throw new InternalServerErrorException('AWS 임시 권한 발급에 실패했습니다.');
+      console.error('Failed to resolve credentials:', error);
+      throw new InternalServerErrorException('AWS 임시 권한 획득에 실패했습니다.');
     }
   }
 }
