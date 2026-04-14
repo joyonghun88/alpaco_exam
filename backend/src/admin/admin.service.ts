@@ -278,7 +278,8 @@ export class AdminService {
     if (!p) throw new Error("Participant not found");
 
     // 실제 환경에서는 여기서 NodeMailer나 SES 등을 연계합니다.
-    const inviteLink = `http://localhost:5173/exam?code=${p.invitationCode}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
+    const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
     
     console.log(`[EMAIL SEND] To: ${p.email}`);
     console.log(`[EMAIL BODY] 안녕하세요 ${p.name}님, [${p.room.roomName}] 초대 코드: ${p.invitationCode}`);
@@ -294,7 +295,8 @@ export class AdminService {
     });
 
     for (const p of participants) {
-      const inviteLink = `http://localhost:5173/exam?code=${p.invitationCode}`;
+      const frontendUrl = process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
+      const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
       let content = template
         .replace(/{{name}}/g, p.name)
         .replace(/{{room}}/g, p.room.roomName)
