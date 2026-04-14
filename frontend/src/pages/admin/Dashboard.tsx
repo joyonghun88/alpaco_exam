@@ -61,6 +61,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
           channelARN: creds.channelArn,
           region: creds.region,
           role: Role.VIEWER,
+          clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
           credentials: {
              accessKeyId: creds.accessKeyId,
              secretAccessKey: creds.secretAccessKey,
@@ -160,7 +161,10 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
         const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
         const creds = await res.json();
         signalingClient = new SignalingClient({
-          channelARN: creds.channelArn, region: creds.region, role: Role.VIEWER,
+          channelARN: creds.channelArn, 
+          region: creds.region, 
+          role: Role.VIEWER,
+          clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
         
