@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Users, FileSpreadsheet, Send, Trash2, RefreshCcw, Link2, Check, ChevronRight, LayoutList, Building2, X, Download, UploadCloud } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Room {
   id: string;
@@ -45,8 +46,8 @@ export default function Participants() {
   const fetchData = async () => {
     try {
       const [resR, resP] = await Promise.all([
-        fetch('http://localhost:3000/admin/rooms', { headers: authHeader }),
-        fetch('http://localhost:3000/admin/participants', { headers: authHeader })
+        fetch(`${API_BASE_URL}/admin/rooms`, { headers: authHeader }),
+        fetch(`${API_BASE_URL}/admin/participants`, { headers: authHeader })
       ]);
       if (resR.ok) setRooms(await resR.json());
       if (resP.ok) setParticipants(await resP.json());
@@ -65,7 +66,7 @@ export default function Participants() {
     e.preventDefault();
     if (!name || !email || !targetRoomId) return alert('정보를 모두 입력하세요.');
     try {
-      const res = await fetch('http://localhost:3000/admin/participants', {
+      const res = await fetch(`${API_BASE_URL}/admin/participants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ name, email, roomId: targetRoomId })
@@ -91,7 +92,7 @@ export default function Participants() {
     if (ps.length === 0) return alert('유효한 데이터가 없습니다. [이름, 이메일] 형식을 확인하세요.');
 
     try {
-      const res = await fetch('http://localhost:3000/admin/participants/bulk', {
+      const res = await fetch(`${API_BASE_URL}/admin/participants/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ roomId: targetRoomId, participants: ps })
@@ -111,7 +112,7 @@ export default function Participants() {
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/participants/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/participants/${id}`, { 
         method: 'DELETE',
         headers: authHeader
       });
@@ -156,7 +157,7 @@ export default function Participants() {
 
   const handleInvite = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/admin/participants/${id}/invite`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/participants/${id}/invite`, { 
         method: 'POST',
         headers: authHeader
       });
@@ -174,7 +175,7 @@ export default function Participants() {
     if (!confirm(`${filteredParticipants.length}명에게 일괄 발송하시겠습니까?`)) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/admin/rooms/${selectedRoomId}/invite-bulk`, {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms/${selectedRoomId}/invite-bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ template: emailTemplate })

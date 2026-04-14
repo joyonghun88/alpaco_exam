@@ -4,6 +4,7 @@ import '@toast-ui/editor/dist/toastui-editor.css';
 import { Editor } from '@toast-ui/react-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { API_BASE_URL } from '../../config';
 
 interface Question {
   id: string; category: string; type: string; content: any; correctAnswer: any; createdAt: string; parentId?: string; parent?: Question;
@@ -44,7 +45,7 @@ export default function QuestionBank() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await fetch('http://localhost:3000/admin/questions/pool', { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/questions/pool`, { headers: authHeader });
       if (res.ok) setQuestions(await res.json());
     } catch {}
   };
@@ -90,8 +91,8 @@ export default function QuestionBank() {
 
     try {
       const url = editorForm.id 
-        ? `http://localhost:3000/admin/questions/pool/${editorForm.id}`
-        : 'http://localhost:3000/admin/questions/pool';
+        ? `${API_BASE_URL}/admin/questions/pool/${editorForm.id}`
+        : `${API_BASE_URL}/admin/questions/pool`;
       const method = editorForm.id ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -130,14 +131,14 @@ export default function QuestionBank() {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('http://localhost:3000/admin/questions/upload', {
+      const res = await fetch(`${API_BASE_URL}/admin/questions/upload`, {
         method: 'POST',
         headers: authHeader,
         body: formData
       });
       if (res.ok) {
         const data = await res.json();
-        const url = data.url.startsWith('http') ? data.url : `http://localhost:3000${data.url}`;
+        const url = data.url.startsWith('http') ? data.url : `${API_BASE_URL}${data.url}`;
         return url;
       }
     } catch {
@@ -165,7 +166,7 @@ export default function QuestionBank() {
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/questions/pool/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/questions/pool/${id}`, { 
         method: 'DELETE',
         headers: authHeader
       });
@@ -469,7 +470,7 @@ export default function QuestionBank() {
                                 return actualPassage && (
                                    <div className="bg-bg-section/30 p-10 rounded-[2.5rem] border border-button-outline/50">
                                       <div className="prose prose-xl max-w-none text-text-title md-preview font-medium leading-loose">
-                                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `http://localhost:3000${url}`}>{actualPassage}</ReactMarkdown>
+                                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{actualPassage}</ReactMarkdown>
                                       </div>
                                    </div>
                                 );

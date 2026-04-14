@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SignalingClient, Role } from 'amazon-kinesis-video-streams-webrtc';
+import { API_BASE_URL, SOCKET_URL } from '../../config';
 
 interface Question {
   id: string;
@@ -42,7 +43,7 @@ export default function Sandbox() {
     }
 
     // 문제 데이터 패치
-    fetch(`http://localhost:3000/exam/${participantId}/questions`)
+    fetch(`${API_BASE_URL}/exam/${participantId}/questions`)
       .then(res => res.json())
       .then(data => {
         setQuestions(data);
@@ -64,7 +65,7 @@ export default function Sandbox() {
        setTimeLeft(remaining > 0 ? remaining : 0);
     }
 
-    const socket = io('http://localhost:3000');
+    const socket = io(SOCKET_URL);
     setSocketInst(socket);
 
     const timerInt = setInterval(() => {
@@ -103,7 +104,7 @@ export default function Sandbox() {
     if (signalingClientRef.current && !isRetry) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/exam/${participantId}/kvs-credentials`);
+      const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
       const creds = await res.json();
 
       const signalingClient = new SignalingClient({
@@ -174,7 +175,7 @@ export default function Sandbox() {
     // 백엔드 동기화 (비동기)
     setIsSyncing(true);
     try {
-      await fetch(`http://localhost:3000/exam/${participantId}/progress`, {
+      await fetch(`${API_BASE_URL}/exam/${participantId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionId: qId, answer: optIndex })
@@ -194,7 +195,7 @@ export default function Sandbox() {
     }
     
     try {
-      const res = await fetch(`http://localhost:3000/exam/${participantId}/submit`, {
+      const res = await fetch(`${API_BASE_URL}/exam/${participantId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers })
@@ -399,7 +400,7 @@ export default function Sandbox() {
                          <span className="text-xs font-black uppercase tracking-widest">Question Passage</span>
                       </div>
                       <div className="prose prose-invert prose-lg max-w-none text-atomic-gray-100 font-medium leading-[2] md-preview">
-                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `http://localhost:3000${url}`}>{currentQ.content.passage}</ReactMarkdown>
+                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{currentQ.content.passage}</ReactMarkdown>
                       </div>
                    </div>
                 </section>

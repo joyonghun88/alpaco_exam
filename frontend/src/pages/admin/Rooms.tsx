@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Monitor, Calendar, Clock, Trash2, Users, FileText, CheckCircle2, ChevronDown, ChevronUp, RefreshCcw, Building, Target, X, Video } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -31,8 +32,8 @@ export default function Rooms() {
   const fetchData = async () => {
     try {
       const [rRes, eRes] = await Promise.all([
-        fetch('http://localhost:3000/admin/rooms', { headers: authHeader }),
-        fetch('http://localhost:3000/admin/exams', { headers: authHeader })
+        fetch(`${API_BASE_URL}/admin/rooms`, { headers: authHeader }),
+        fetch(`${API_BASE_URL}/admin/exams`, { headers: authHeader })
       ]);
       if (rRes.ok) setRooms(await rRes.json());
       if (eRes.ok) setExams(await eRes.json());
@@ -45,7 +46,7 @@ export default function Rooms() {
     e.preventDefault();
     if (!form.examId || !form.roomName) return alert('정보를 모두 입력하세요.');
     try {
-      const res = await fetch('http://localhost:3000/admin/rooms', {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify(form)
@@ -60,7 +61,7 @@ export default function Rooms() {
   const deleteRoom = async (id: string) => {
     if (!confirm('고사장을 삭제하시겠습니까? 관련 데이터가 모두 소실됩니다.')) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/rooms/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms/${id}`, {
         method: 'DELETE',
         headers: authHeader
       });

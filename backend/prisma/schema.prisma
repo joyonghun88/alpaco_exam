@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,38 +8,28 @@ datasource db {
 }
 
 model Exam {
-  id          String   @id @default(uuid()) @db.Uuid
-  title       String   @db.VarChar
-  description String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
+  id          String         @id @default(uuid()) @db.Uuid
+  title       String         @db.VarChar
+  description String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
   questions   ExamQuestion[]
   examRooms   ExamRoom[]
 
   @@map("exams")
 }
 
-enum QuestionType {
-  MULTIPLE_CHOICE
-  SHORT_ANSWER
-  ESSAY
-  FILL_IN_THE_BLANK
-}
-
 model Question {
-  id            String       @id @default(uuid()) @db.Uuid
-  category      String?      @db.VarChar
+  id            String         @id @default(uuid()) @db.Uuid
+  category      String?        @db.VarChar
   type          QuestionType
   content       Json
-  correctAnswer Json?        @map("correct_answer")
-  createdAt     DateTime     @default(now()) @map("created_at")
-
-  parentId      String?      @map("parent_id") @db.Uuid
-  parent        Question?    @relation("LinkedQuestions", fields: [parentId], references: [id])
-  children      Question[]   @relation("LinkedQuestions")
-
+  correctAnswer Json?          @map("correct_answer")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  parentId      String?        @map("parent_id") @db.Uuid
   exams         ExamQuestion[]
+  parent        Question?      @relation("LinkedQuestions", fields: [parentId], references: [id])
+  children      Question[]     @relation("LinkedQuestions")
   submissions   Submission[]
 
   @@map("questions")
@@ -57,7 +41,6 @@ model ExamQuestion {
   questionId String   @map("question_id") @db.Uuid
   orderNum   Int      @map("order_num")
   point      Int
-
   exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
@@ -65,40 +48,26 @@ model ExamQuestion {
   @@map("exam_questions")
 }
 
-enum RoomStatus {
-  READY
-  IN_PROGRESS
-  CLOSED
-}
-
 model ExamRoom {
-  id                 String       @id @default(uuid()) @db.Uuid
-  examId             String       @map("exam_id") @db.Uuid
-  roomName           String       @map("room_name") @db.VarChar
-  startAt            DateTime     @map("start_at")
-  endAt              DateTime     @map("end_at")
-  durationMinutes    Int          @map("duration_minutes")
-  status             RoomStatus   @default(READY)
-  isShuffleQuestions Boolean      @default(false) @map("is_shuffle_questions")
-  isRequireCamera    Boolean      @default(false) @map("is_require_camera")
-  violationLimit     Int          @default(3) @map("violation_limit")
-  waitingMessage     String?      @default("시험 시작 전 시스템 환경을 점검해 주세요. 전체 화면 모드가 유지되어야 하며, 시험 중 브라우저 이탈 시 부정행위로 간주될 수 있습니다.") @map("waiting_message") @db.Text
-  waitingTitle       String?      @default("AI 평가 샌드박스") @map("waiting_title")
-  iconType           String?      @default("Activity") @map("icon_type")
-  standardTerms      String?      @map("standard_terms") @db.Text
-  cameraTerms        String?      @map("camera_terms") @db.Text
-
-  exam               Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  id                 String        @id @default(uuid()) @db.Uuid
+  examId             String        @map("exam_id") @db.Uuid
+  roomName           String        @map("room_name") @db.VarChar
+  startAt            DateTime      @map("start_at")
+  endAt              DateTime      @map("end_at")
+  durationMinutes    Int           @map("duration_minutes")
+  status             RoomStatus    @default(READY)
+  isShuffleQuestions Boolean       @default(false) @map("is_shuffle_questions")
+  violationLimit     Int           @default(3) @map("violation_limit")
+  waitingMessage     String?       @default("시험 시작 전 시스템 환경을 점검해 주세요. 전체 화면 모드가 유지되어야 하며, 시험 중 브라우저 이탈 시 부정행위로 간주될 수 있습니다.") @map("waiting_message")
+  iconType           String?       @default("Activity") @map("icon_type")
+  waitingTitle       String?       @default("AI 평가 샌드박스") @map("waiting_title")
+  isRequireCamera    Boolean       @default(false) @map("is_require_camera")
+  cameraTerms        String?       @map("camera_terms")
+  standardTerms      String?       @map("standard_terms")
+  exam               Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
   participants       Participant[]
 
   @@map("exam_rooms")
-}
-
-enum ParticipantStatus {
-  READY
-  TESTING
-  COMPLETED
-  DISQUALIFIED
 }
 
 model Participant {
@@ -111,13 +80,86 @@ model Participant {
   startedAt      DateTime?         @map("started_at")
   submittedAt    DateTime?         @map("submitted_at")
   termsAgreedAt  DateTime?         @map("terms_agreed_at")
-  
   room           ExamRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  submissions    Submission[]
   securityLogs   SecurityLog[]
+  submissions    Submission[]
 
-  @@index([invitationCode], name: "idx_invitation_code")
+  @@index([invitationCode], map: "idx_invitation_code")
   @@map("participants")
+}
+
+model Submission {
+  id            String        @id @default(uuid()) @db.Uuid
+  participantId String        @map("participant_id") @db.Uuid
+  questionId    String        @map("question_id") @db.Uuid
+  answerContent Json          @map("answer_content")
+  earnedPoint   Int?          @map("earned_point")
+  gradingStatus GradingStatus @default(PENDING) @map("grading_status")
+  gradedById    String?       @map("graded_by") @db.Uuid
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  participant   Participant   @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  question      Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, questionId])
+  @@map("submissions")
+}
+
+model SecurityLog {
+  id            BigInt      @id @default(autoincrement())
+  participantId String      @map("participant_id") @db.Uuid
+  violationType String      @map("violation_type") @db.VarChar
+  capturedAt    DateTime    @default(now()) @map("captured_at")
+  description   String?
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, capturedAt], map: "idx_violation_tracker")
+  @@map("security_logs")
+}
+
+model Admin {
+  id        String     @id @default(uuid()) @db.Uuid
+  username  String     @unique @db.VarChar
+  password  String     @db.VarChar
+  name      String     @db.VarChar
+  role      AdminRole  @default(PROCTOR)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  logs      AdminLog[]
+
+  @@map("admins")
+}
+
+model AdminLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  adminId   String   @map("admin_id") @db.Uuid
+  action    String   @db.VarChar
+  details   String?
+  ipAddress String?  @map("ip_address") @db.VarChar
+  createdAt DateTime @default(now()) @map("created_at")
+  targetId  String?  @map("target_id") @db.VarChar
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("admin_logs")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SHORT_ANSWER
+  ESSAY
+  FILL_IN_THE_BLANK
+}
+
+enum RoomStatus {
+  READY
+  IN_PROGRESS
+  CLOSED
+}
+
+enum ParticipantStatus {
+  READY
+  TESTING
+  COMPLETED
+  DISQUALIFIED
 }
 
 enum GradingStatus {
@@ -126,65 +168,7 @@ enum GradingStatus {
   MANUAL_GRADED
 }
 
-model Submission {
-  id             String        @id @default(uuid()) @db.Uuid
-  participantId  String        @map("participant_id") @db.Uuid
-  questionId     String        @map("question_id") @db.Uuid
-  answerContent  Json          @map("answer_content")
-  earnedPoint    Int?          @map("earned_point")
-  gradingStatus  GradingStatus @default(PENDING) @map("grading_status")
-  gradedById     String?       @map("graded_by") @db.Uuid
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  participant    Participant   @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  question       Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([participantId, questionId])
-  @@map("submissions")
-}
-
-model SecurityLog {
-  id             BigInt      @id @default(autoincrement())
-  participantId  String      @map("participant_id") @db.Uuid
-  violationType  String      @map("violation_type") @db.VarChar
-  capturedAt     DateTime    @default(now()) @map("captured_at")
-  description    String?     @db.Text
-
-  participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
-
-  @@index([participantId, capturedAt], name: "idx_violation_tracker")
-  @@map("security_logs")
-}
-
 enum AdminRole {
   SUPER_ADMIN
   PROCTOR
-}
-
-model Admin {
-  id        String    @id @default(uuid()) @db.Uuid
-  username  String    @unique @db.VarChar
-  password  String    @db.VarChar
-  name      String    @db.VarChar
-  role      AdminRole @default(PROCTOR)
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  
-  logs      AdminLog[]
-
-  @@map("admins")
-}
-
-model AdminLog {
-  id               String   @id @default(uuid()) @db.Uuid
-  adminId          String   @map("admin_id") @db.Uuid
-  action           String   @db.VarChar
-  targetId         String?  @map("target_id") @db.VarChar
-  details          String?  @db.Text
-  ipAddress        String?  @map("ip_address") @db.VarChar
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  admin            Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-
-  @@map("admin_logs")
 }

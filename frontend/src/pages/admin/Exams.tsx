@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, BookOpen, Trash2, CheckCircle2, ListPlus, RefreshCcw, ChevronLeft, Search, FileText, Layers, Hash, Target, ArrowRight, X, Database, ChevronUp, ChevronDown } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Question {
   id: string;
@@ -43,21 +44,21 @@ export default function Exams() {
 
   const fetchExams = async () => {
     try {
-      const res = await fetch('http://localhost:3000/admin/exams', { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/exams`, { headers: authHeader });
       if (res.ok) setExams(await res.json());
     } catch {}
   };
 
   const fetchQuestionPool = async () => {
     try {
-      const res = await fetch('http://localhost:3000/admin/questions/pool', { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/questions/pool`, { headers: authHeader });
       if (res.ok) setQuestionPool(await res.json());
     } catch {}
   };
 
   const fetchExamDetail = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/admin/exams/${id}`, { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/exams/${id}`, { headers: authHeader });
       if (res.ok) setSelectedExam(await res.json());
     } catch {}
   };
@@ -71,7 +72,7 @@ export default function Exams() {
     e.preventDefault();
     if (!newExamForm.title) return alert('제목을 입력하세요.');
     try {
-      const res = await fetch('http://localhost:3000/admin/exams', {
+      const res = await fetch(`${API_BASE_URL}/admin/exams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify(newExamForm)
@@ -86,7 +87,7 @@ export default function Exams() {
   const handleDeleteExam = async (id: string) => {
     if (!confirm('시험지를 삭제하시겠습니까? 관련 데이터가 모두 삭제됩니다.')) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/exams/${id}`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/exams/${id}`, { 
         method: 'DELETE',
         headers: authHeader
       });
@@ -97,7 +98,7 @@ export default function Exams() {
   const handleAssignQuestion = async (q: Question) => {
     if (!selectedExam) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/exams/${selectedExam.id}/assign`, {
+      const res = await fetch(`${API_BASE_URL}/admin/exams/${selectedExam.id}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ 
@@ -117,7 +118,7 @@ export default function Exams() {
     if (!selectedExam) return;
     if (!confirm('이 문항을 시험지에서 제외하시겠습니까?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/exams/${selectedExam.id}/questions/${qId}`, { 
+      const res = await fetch(`${API_BASE_URL}/admin/exams/${selectedExam.id}/questions/${qId}`, { 
         method: 'DELETE',
         headers: authHeader
       });
@@ -139,12 +140,12 @@ export default function Exams() {
     
     try {
       await Promise.all([
-        fetch(`http://localhost:3000/admin/exams/${selectedExam.id}/questions/${itemA.questionId}`, {
+        fetch(`${API_BASE_URL}/admin/exams/${selectedExam.id}/questions/${itemA.questionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({ orderNum: itemB.orderNum, point: itemA.point })
         }),
-        fetch(`http://localhost:3000/admin/exams/${selectedExam.id}/questions/${itemB.questionId}`, {
+        fetch(`${API_BASE_URL}/admin/exams/${selectedExam.id}/questions/${itemB.questionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', ...authHeader },
           body: JSON.stringify({ orderNum: itemA.orderNum, point: itemB.point })

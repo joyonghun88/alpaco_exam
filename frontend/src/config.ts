@@ -1,2 +1,2 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-export const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+export const API_BASE_URL = 'http://43.200.71.83:3000';
+export const SOCKET_URL = 'http://43.200.71.83:3000';

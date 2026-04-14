@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, MonitorPlay, AlertTriangle, ArrowRight, Video, VideoOff, Camera, CheckCircle2, Settings, Globe } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 
 export default function Entry() {
@@ -86,7 +87,7 @@ export default function Entry() {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/auth/verify', {
+      const response = await fetch(`${API_BASE_URL}/auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode, agreedTerms: true })

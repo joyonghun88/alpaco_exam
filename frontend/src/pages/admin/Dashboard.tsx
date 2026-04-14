@@ -195,7 +195,7 @@ export default function AdminDashboard() {
 
   const fetchSummaries = async () => {
     try {
-      const res = await fetch('http://localhost:3000/admin/dashboard/summary', { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/dashboard/summary`, { headers: authHeader });
       if (res.ok) setSummaries(await res.json());
     } catch {}
   };
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
   const fetchRoomDetail = async (roomId: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3000/admin/dashboard?roomId=${roomId}`, { headers: authHeader });
+      const res = await fetch(`${API_BASE_URL}/admin/dashboard?roomId=${roomId}`, { headers: authHeader });
       if (res.ok) {
         const data = await res.json();
         setParticipants(data.participants);
@@ -215,7 +215,7 @@ export default function AdminDashboard() {
   // 감사 로그 기록 유틸리티
   const logAccess = async (participantId: string, action: string) => {
     try {
-      await fetch(`http://localhost:3000/admin/participants/${participantId}/log-view`, {
+      await fetch(`${API_BASE_URL}/admin/participants/${participantId}/log-view`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ action })
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
   const updateStatus = async (roomId: string, newStatus: string) => {
     if (!confirm(`고사장 상태를 ${newStatus}(으)로 변경하시겠습니까?`)) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/rooms/${roomId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms/${roomId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ status: newStatus })
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
   const handleSaveWaitMsg = async () => {
     if (!selectedRoom) return;
     try {
-      const res = await fetch(`http://localhost:3000/admin/rooms/${selectedRoom.id}/waiting-message`, {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms/${selectedRoom.id}/waiting-message`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({ 

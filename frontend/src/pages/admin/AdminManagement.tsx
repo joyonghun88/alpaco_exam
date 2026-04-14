@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UserPlus, Shield, Trash2, History, Activity, Globe, Clock } from 'lucide-react';
+import { API_BASE_URL } from '../../config';
 
 interface Admin {
   id: string;
@@ -34,7 +35,7 @@ export default function AdminManagement() {
   const fetchAdmins = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/admin/auth/admins', {
+      const res = await fetch(`${API_BASE_URL}/admin/auth/admins`, {
         headers: authHeader
       });
       if (res.ok) setAdmins(await res.json());
@@ -45,7 +46,7 @@ export default function AdminManagement() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3000/admin/auth/logs', {
+      const res = await fetch(`${API_BASE_URL}/admin/auth/logs`, {
         headers: authHeader
       });
       if (res.ok) setLogs(await res.json());
@@ -56,7 +57,7 @@ export default function AdminManagement() {
   const handleRegister = async (e: any) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/admin/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/admin/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify(newAdmin)
@@ -77,7 +78,7 @@ export default function AdminManagement() {
 
   const updateRole = async (id: string, role: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/admin/auth/admins/${id}/role`, {
+      const res = await fetch(`${API_BASE_URL}/admin/auth/admins/${id}/role`, {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
