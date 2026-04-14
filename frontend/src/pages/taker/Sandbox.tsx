@@ -126,12 +126,12 @@ export default function Sandbox() {
 
       const peerConnectionsByClientId: Record<string, RTCPeerConnection> = {};
 
-      signalingClient.on('open', () => {
+      (signalingClient as any).on('open', () => {
         console.log('[KVS Master] Connected to signaling');
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       });
 
-      signalingClient.on('sdpOffer', async (offer: any, remoteClientId: string) => {
+      (signalingClient as any).on('sdpOffer', async (offer: any, remoteClientId: string) => {
         console.log('[KVS Master] Received offer from viewer:', remoteClientId);
         
         const peerConnection = new RTCPeerConnection({
@@ -148,27 +148,27 @@ export default function Sandbox() {
 
         peerConnection.onicecandidate = ({ candidate }) => {
           if (candidate) {
-            signalingClient.sendIceCandidate(candidate, remoteClientId);
+            (signalingClient as any).sendIceCandidate(candidate, remoteClientId);
           }
         };
 
         await peerConnection.setRemoteDescription(offer);
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        signalingClient.sendSdpAnswer(peerConnection.localDescription, remoteClientId);
+        (signalingClient as any).sendSdpAnswer(peerConnection.localDescription as any, remoteClientId);
       });
 
-      signalingClient.on('iceCandidate', async (candidate: any, remoteClientId: string) => {
+      (signalingClient as any).on('iceCandidate', async (candidate: any, remoteClientId: string) => {
         const pc = peerConnectionsByClientId[remoteClientId];
         if (pc) await pc.addIceCandidate(candidate);
       });
 
-      signalingClient.on('close', () => {
+      (signalingClient as any).on('close', () => {
         console.warn('[KVS Master] Disconnected. Retrying in 5s...');
         reconnectTimeoutRef.current = setTimeout(() => startStreaming(true), 5000);
       });
 
-      signalingClient.on('error', (err: any) => {
+      (signalingClient as any).on('error', (err: any) => {
         console.error('[KVS Master] Error:', err);
       });
 

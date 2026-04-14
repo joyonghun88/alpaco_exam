@@ -86,7 +86,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
 
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          signalingClient.sendSdpOffer(peerConnection.localDescription);
+          signalingClient.sendSdpOffer(peerConnection.localDescription as any);
         });
 
         signalingClient.on('sdpAnswer', async (answer: any) => {
@@ -165,7 +165,7 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          signalingClient.sendSdpOffer(peerConnection.localDescription);
+          signalingClient.sendSdpOffer(peerConnection.localDescription as any);
         });
         signalingClient.on('sdpAnswer', async (answer: any) => peerConnection.setRemoteDescription(answer));
         signalingClient.on('iceCandidate', (cad: any) => peerConnection.addIceCandidate(cad));
