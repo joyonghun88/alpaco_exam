@@ -141,11 +141,26 @@ export default function Sandbox() {
         const peerConnection = new RTCPeerConnection({ iceServers });
         peerConnectionsByClientId[remoteClientId] = peerConnection;
 
-        // 로컬 트랙 추가
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => {
-            peerConnection.addTrack(track, streamRef.current!);
+        // 로컬 트랙 추가 - 최신 스트림 확보 확인
+        let currentStream = streamRef.current;
+        if (!currentStream) {
+            console.warn('[KVS Master] Stream not ready, trying to recover...');
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                streamRef.current = currentStream;
+                if (videoRef.current) videoRef.current.srcObject = currentStream;
+            } catch (e) {
+                console.error('[KVS Master] Failed to get camera stream for monitoring', e);
+            }
+        }
+
+        if (currentStream) {
+          console.log('[KVS Master] Adding tracks to peer connection');
+          currentStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, currentStream!);
           });
+        } else {
+          console.error('[KVS Master] No stream available to send to viewer');
         }
 
         peerConnection.onicecandidate = ({ candidate }) => {

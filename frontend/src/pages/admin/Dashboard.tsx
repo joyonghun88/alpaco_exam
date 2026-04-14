@@ -46,12 +46,14 @@ const VIOLATION_MAP: Record<string, string> = {
 function KvsViewer({ participantId, onClose }: { participantId: string, onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('초기화 중...');
 
   useEffect(() => {
     let signalingClient: any;
 
     async function startViewer() {
       try {
+        setStatus('자격증명 확인...');
         const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
         const creds = await res.json();
 
@@ -72,7 +74,6 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
 
         const peerConnection = new RTCPeerConnection({ iceServers });
 
-        // ICE Candidate 송신 로직 추가
         peerConnection.onicecandidate = ({ candidate }) => {
           if (candidate) {
             signalingClient.sendIceCandidate(candidate);
@@ -81,17 +82,16 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
 
         signalingClient.on('open', async () => {
           console.log('[KVS Admin] Viewer signaling opened');
+          setStatus('수렴자 기기 연결 요청...');
           setLoading(false);
-          
-          // 비디오 수신 의사 명시
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
-
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
           signalingClient.sendSdpOffer(peerConnection.localDescription as any);
         });
 
         signalingClient.on('sdpAnswer', async (answer: any) => {
+          setStatus('수험생 기기 응답함, 연결 처리...');
           await peerConnection.setRemoteDescription(answer);
         });
 
@@ -100,13 +100,20 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         });
 
         peerConnection.ontrack = (event) => {
+          setStatus('연결 성공: LIVE');
           if (videoRef.current) {
             videoRef.current.srcObject = event.streams[0];
           }
         };
 
+        signalingClient.on('error', (err: any) => {
+           setStatus('연결 에러');
+           console.error(err);
+        });
+
         signalingClient.open();
       } catch (err) {
+        setStatus('시작 실패');
         console.error('Failed to start KvsViewer', err);
       }
     }
@@ -122,11 +129,11 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
             <X size={24} />
          </button>
          <div className="p-8 border-b border-button-outline flex items-center space-x-3">
-            <div className="w-3 h-3 rounded-full bg-ai-accent animate-pulse" />
-            <h3 className="text-xl font-black text-text-title uppercase tracking-tighter">Live Remote Proctoring Feed</h3>
+            <div className={`w-3 h-3 rounded-full ${status === '연결 성공: LIVE' ? 'bg-green-500' : 'bg-ai-accent animate-pulse'}`} />
+            <h3 className="text-xl font-black text-text-title uppercase tracking-tighter">Live Monitor: {status}</h3>
          </div>
          <div className="relative aspect-video bg-black flex items-center justify-center">
-            {loading && <div className="text-white font-black animate-pulse">CONNECTING TO STREAM...</div>}
+            {loading && <div className="text-white font-black animate-pulse">{status}</div>}
             <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain" />
          </div>
          <div className="p-6 bg-bg-section/50 flex justify-between items-center">
@@ -144,7 +151,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
 // KVS 소형 뷰어 아이템 (모자이크용)
 function KvsViewerItem({ participantId }: { participantId: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('대기');
 
   useEffect(() => {
     let signalingClient: any;
@@ -168,15 +175,21 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
         };
 
         signalingClient.on('open', async () => {
-          setLoading(false);
+          setStatus('요청');
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
           signalingClient.sendSdpOffer(peerConnection.localDescription as any);
         });
-        signalingClient.on('sdpAnswer', async (answer: any) => peerConnection.setRemoteDescription(answer));
+        signalingClient.on('sdpAnswer', async (answer: any) => {
+          setStatus('연결');
+          peerConnection.setRemoteDescription(answer);
+        });
         signalingClient.on('iceCandidate', (cad: any) => peerConnection.addIceCandidate(cad));
-        peerConnection.ontrack = (ev) => { if (videoRef.current) videoRef.current.srcObject = ev.streams[0]; };
+        peerConnection.ontrack = (ev) => { 
+           setStatus('LIVE');
+           if (videoRef.current) videoRef.current.srcObject = ev.streams[0]; 
+        };
         signalingClient.open();
       } catch {}
     }
@@ -185,9 +198,15 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
   }, [participantId]);
 
   return (
-    <div className="w-full h-full bg-black relative flex items-center justify-center">
-      {loading && <div className="text-[10px] text-white/40 font-black animate-pulse uppercase">Link...</div>}
-      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+    <div className="bg-black rounded-2xl overflow-hidden aspect-video relative border border-white/5 group">
+       <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+       <div className="absolute top-2 left-2 flex items-center space-x-1">
+          <div className={`w-1.5 h-1.5 rounded-full ${status === 'LIVE' ? 'bg-green-500' : 'bg-ai-accent animate-pulse'}`} />
+          <span className="text-[10px] font-bold text-white uppercase drop-shadow-md">{status}</span>
+       </div>
+       <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <p className="text-[10px] font-black text-white/50">{participantId}</p>
+       </div>
     </div>
   );
 }
