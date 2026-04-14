@@ -27,7 +27,7 @@ export default function Rooms() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [previewRoom, setPreviewRoom] = useState<Room | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ roomName: '', durationMinutes: 60, startAt: '' });
+  const [editForm, setEditForm] = useState({ roomName: '', durationMinutes: 60, startAt: '', isRequireCamera: false });
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -65,7 +65,8 @@ export default function Rooms() {
     setEditForm({
       roomName: room.roomName,
       durationMinutes: room.durationMinutes,
-      startAt: room.startAt.slice(0, 16) // datetime-local format
+      startAt: room.startAt.slice(0, 16),
+      isRequireCamera: room.isRequireCamera
     });
   };
 
@@ -79,9 +80,12 @@ export default function Rooms() {
       if (res.ok) {
         setEditingId(null);
         fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.message || '수정에 실패했습니다.');
       }
     } catch {
-      alert('수정에 실패했습니다.');
+      alert('네트워크 오류가 발생했습니다.');
     }
   };
 
@@ -208,18 +212,30 @@ export default function Rooms() {
                            {room.status}
                          </div>
                          {editingId === room.id ? (
-                           <input 
-                             value={editForm.roomName}
-                             onChange={e => setEditForm({...editForm, roomName: e.target.value})}
-                             className="text-2xl font-black text-primary bg-bg-section border-b-2 border-primary outline-none px-2 py-1 rounded-t-lg"
-                             autoFocus
-                           />
+                           <div className="flex items-center space-x-3">
+                             <input 
+                               value={editForm.roomName}
+                               onChange={e => setEditForm({...editForm, roomName: e.target.value})}
+                               className="text-2xl font-black text-primary bg-bg-section border-b-2 border-primary outline-none px-2 py-1 rounded-t-lg"
+                               autoFocus
+                             />
+                             <label className="flex items-center space-x-2 cursor-pointer bg-bg-section px-3 py-1 rounded-xl border border-button-outline">
+                                <input 
+                                  type="checkbox"
+                                  checked={editForm.isRequireCamera}
+                                  onChange={e => setEditForm({...editForm, isRequireCamera: e.target.checked})}
+                                  className="w-4 h-4 text-primary rounded"
+                                />
+                                <span className="text-[10px] font-black text-text-caption flex items-center"><Video size={12} className="mr-1" /> 카메라 필수</span>
+                             </label>
+                           </div>
                          ) : (
-                           <h3 className="text-2xl font-black text-text-title group-hover:text-primary transition-colors">{room.roomName}</h3>
-                         )}
-                         {room.isRequireCamera && (
-                           <div className="bg-primary/10 text-primary p-1.5 rounded-lg flex items-center justify-center" title="카메라 필수">
-                              <Video size={18} />
+                           <div className="flex items-center space-x-3">
+                             <h3 className="text-2xl font-black text-text-title group-hover:text-primary transition-colors">{room.roomName}</h3>
+                             <div className={`flex items-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-black ${room.isRequireCamera ? 'bg-primary/10 text-primary' : 'bg-bg-section text-text-caption border border-button-outline opacity-40'}`}>
+                               <Video size={14} />
+                               <span>{room.isRequireCamera ? 'CAM ON' : 'CAM OFF'}</span>
+                             </div>
                            </div>
                          )}
                       </div>
@@ -242,13 +258,15 @@ export default function Rooms() {
                              </button>
                            </>
                          ) : (
-                           <button 
-                             onClick={() => startEdit(room)}
-                             className="p-3 bg-bg-section text-text-title rounded-2xl hover:bg-primary hover:text-white transition-all"
-                             title="정보 수정"
-                           >
-                              <Edit2 size={20} />
-                           </button>
+                           room.status === 'READY' && (
+                             <button 
+                               onClick={() => startEdit(room)}
+                               className="p-3 bg-bg-section text-text-title rounded-2xl hover:bg-primary hover:text-white transition-all"
+                               title="정보 수정"
+                             >
+                                <Edit2 size={20} />
+                             </button>
+                           )
                          )}
                          <button 
                            onClick={() => setExpandedId(expandedId === room.id ? null : room.id)}
