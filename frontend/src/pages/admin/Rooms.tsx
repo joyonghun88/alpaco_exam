@@ -47,6 +47,12 @@ export default function Rooms() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.examId || !form.roomName) return alert('정보를 모두 입력하세요.');
+    
+    // 과거 시간 검증
+    if (form.startAt && new Date(form.startAt) < new Date()) {
+      return alert('시작 시각은 현재 시각보다 이후여야 합니다.');
+    }
+
     try {
       const payload = {
         ...form,
@@ -85,6 +91,11 @@ export default function Rooms() {
   };
 
   const handleUpdate = async (id: string) => {
+    // 과거 시간 검증
+    if (editForm.startAt && new Date(editForm.startAt) < new Date()) {
+      return alert('시작 시각은 현재 시각보다 이후여야 합니다.');
+    }
+
     try {
       // 서버 전송 전 로컬 시간을 UTC ISO 형식으로 변환
       const payload = {
