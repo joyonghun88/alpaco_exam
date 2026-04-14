@@ -27,12 +27,18 @@ export default function Sandbox() {
   const [isSyncing, setIsSyncing] = useState(false);
   
   const isSubmittingRef = useRef(false);
+  const showGuideRef = useRef(showGuide);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const signalingClientRef = useRef<SignalingClient | null>(null);
   const reconnectTimeoutRef = useRef<any>(null);
 
   const participantId = sessionStorage.getItem('participantId') || '';
+
+  // showGuideRef 동기화
+  useEffect(() => {
+    showGuideRef.current = showGuide;
+  }, [showGuide]);
 
   // 1. 초기 데이터 로드 및 로컬 복구
   useEffect(() => {
@@ -74,13 +80,13 @@ export default function Sandbox() {
 
     // 보안 감지 이벤트
     const handleBlur = () => {
-      if (isSubmittingRef.current || showGuide) return;
+      if (isSubmittingRef.current || showGuideRef.current) return;
       setIsWarningBlocked(true);
       socket.emit('report_violation', { participantId, type: 'BLUR_SCREEN_OUT' });
     };
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && !isSubmittingRef.current && !showGuide) {
+      if (!document.fullscreenElement && !isSubmittingRef.current && !showGuideRef.current) {
         setIsWarningBlocked(true);
         socket.emit('report_violation', { participantId, type: 'EXIT_FULLSCREEN' });
       }
