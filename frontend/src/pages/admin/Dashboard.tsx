@@ -66,9 +66,11 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
           },
         } as any);
 
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }]
-        });
+        const iceServers = (creds.iceServers && creds.iceServers.length > 0)
+          ? creds.iceServers
+          : [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }];
+
+        const peerConnection = new RTCPeerConnection({ iceServers });
 
         // ICE Candidate 송신 로직 추가
         peerConnection.onicecandidate = ({ candidate }) => {
@@ -154,7 +156,12 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
           channelARN: creds.channelArn, region: creds.region, role: Role.VIEWER,
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
-        const peerConnection = new RTCPeerConnection({ iceServers: [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }] });
+        
+        const iceServers = (creds.iceServers && creds.iceServers.length > 0)
+          ? creds.iceServers
+          : [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }];
+
+        const peerConnection = new RTCPeerConnection({ iceServers });
         
         peerConnection.onicecandidate = ({ candidate }) => {
           if (candidate) signalingClient.sendIceCandidate(candidate);

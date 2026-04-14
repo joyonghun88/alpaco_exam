@@ -5,13 +5,15 @@ import {
   DescribeSignalingChannelCommand,
   UpdateMediaStorageConfigurationCommand,
   CreateStreamCommand,
-  DescribeStreamCommand
+  DescribeStreamCommand,
+  GetSignalingChannelEndpointCommand
 } from "@aws-sdk/client-kinesis-video";
 import { 
   KinesisVideoArchivedMediaClient, 
   GetHLSStreamingSessionURLCommand,
   GetClipCommand
 } from "@aws-sdk/client-kinesis-video-archived-media";
+import { KinesisVideoSignalingClient, GetIceServerConfigCommand } from "@aws-sdk/client-kinesis-video-signaling";
 import { STSClient, GetSessionTokenCommand } from "@aws-sdk/client-sts";
 
 @Injectable()
@@ -19,17 +21,60 @@ export class AwsService {
   private kinesisVideoClient: KinesisVideoClient;
   private archivedMediaClient: KinesisVideoArchivedMediaClient;
   private stsClient: STSClient;
+  private region: string;
 
   constructor() {
-    const region = process.env.AWS_REGION || 'ap-northeast-2';
+    this.region = process.env.AWS_REGION || 'ap-northeast-2';
     const credentials = {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
     };
 
-    this.kinesisVideoClient = new KinesisVideoClient({ region, credentials });
-    this.archivedMediaClient = new KinesisVideoArchivedMediaClient({ region, credentials });
-    this.stsClient = new STSClient({ region, credentials });
+    this.kinesisVideoClient = new KinesisVideoClient({ region: this.region, credentials });
+    this.archivedMediaClient = new KinesisVideoArchivedMediaClient({ region: this.region, credentials });
+    this.stsClient = new STSClient({ region: this.region, credentials });
+  }
+
+  /**
+   * KVS ICE Servers (STUN/TURN) 목록 가져오기
+   */
+  async getIceServers(channelArn: string) {
+    try {
+      // 1. 엔드포인트 가져오기
+      const { ResourceEndpointList } = await this.kinesisVideoClient.send(new GetSignalingChannelEndpointCommand({
+        ChannelARN: channelArn,
+        SingleMasterChannelEndpointConfiguration: {
+          Protocols: ['HTTPS'],
+          Role: 'VIEWER'
+        }
+      }));
+
+      const httpsEndpoint = ResourceEndpointList?.find(e => e.Protocol === 'HTTPS')?.ResourceEndpoint;
+      if (!httpsEndpoint) throw new Error('Signaling endpoint not found');
+
+      // 2. ICE Server Config 가져오기
+      const signalingClient = new KinesisVideoSignalingClient({
+        region: this.region,
+        endpoint: httpsEndpoint,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+        }
+      });
+
+      const { IceServerList } = await signalingClient.send(new GetIceServerConfigCommand({
+        ChannelARN: channelArn
+      }));
+
+      return IceServerList?.map(s => ({
+        urls: s.Uris,
+        username: s.Username,
+        credential: s.Password
+      })) || [];
+    } catch (error) {
+      console.error('Failed to get ICE servers:', error);
+      return [];
+    }
   }
 
   /**
@@ -44,7 +89,7 @@ export class AwsService {
       if (error.name === 'ResourceNotFoundException') {
         const { StreamARN } = await this.kinesisVideoClient.send(new CreateStreamCommand({ 
           StreamName: streamName,
-          DataRetentionInHours: 24 * 7 // 7일 보관
+          DataRetentionInHours: 24 * 7
         }));
         const { StreamInfo } = await this.kinesisVideoClient.send(new DescribeStreamCommand({ StreamName: streamName }));
         return StreamInfo;
@@ -76,7 +121,7 @@ export class AwsService {
           ChannelARN,
           MediaStorageConfiguration: {
             Status: 'ENABLED',
-            StreamARN: streamInfo?.StreamARN, // 생성한 데이터 스트림에 저장
+            StreamARN: streamInfo?.StreamARN,
           }
         });
         await this.kinesisVideoClient.send(storageCommand);
@@ -98,10 +143,10 @@ export class AwsService {
         StreamName: streamName,
         PlaybackMode: 'ON_DEMAND',
       });
-      const { HLSStreamingSessionURL } = await this.archivedMediaClient.send(command);
+      const { HLSStreamingSessionURL } = await this.archivedMediaClient.send(command).catch(() => ({ HLSStreamingSessionURL: null }));
       return HLSStreamingSessionURL;
     } catch (error) {
-      return null; // 녹화 데이터가 아직 없거나 스트림이 없는 경우
+      return null;
     }
   }
 
@@ -114,20 +159,7 @@ export class AwsService {
     const endTime = new Date(violationTimestamp.getTime() + 10 * 1000);
 
     try {
-      const command = new GetClipCommand({
-        StreamName: streamName,
-        ClipFragmentSelector: {
-          FragmentSelectorType: 'SERVER_TIMESTAMP',
-          TimestampRange: {
-            StartTimestamp: startTime,
-            EndTimestamp: endTime
-          }
-        }
-      });
-      // GetClip은 직접적인 클립 주소보다는 다운로드 가능한 스트림을 제어합니다.
-      // 실제 구현 시 S3 Presigned URL이나 스트리밍 세션으로 전환될 수 있습니다.
-      // 여기서는 개념적으로 클립 요청을 처리합니다.
-      return `https://kinesisvideo.${process.env.AWS_REGION}.amazonaws.com/getClip?streamName=${streamName}&start=${startTime.getTime()}&end=${endTime.getTime()}`;
+      return `https://kinesisvideo.${this.region}.amazonaws.com/getClip?streamName=${streamName}&start=${startTime.getTime()}&end=${endTime.getTime()}`;
     } catch (error) {
        return null;
     }
@@ -139,7 +171,7 @@ export class AwsService {
   async getTemporaryCredentials() {
     try {
       const command = new GetSessionTokenCommand({
-        DurationSeconds: 3600, // 1시간 만료
+        DurationSeconds: 3600,
       });
       const { Credentials } = await this.stsClient.send(command);
       if (!Credentials) {
@@ -149,7 +181,7 @@ export class AwsService {
         accessKeyId: Credentials.AccessKeyId,
         secretAccessKey: Credentials.SecretAccessKey,
         sessionToken: Credentials.SessionToken,
-        region: process.env.AWS_REGION || 'ap-northeast-2',
+        region: this.region,
       };
     } catch (error) {
       throw new InternalServerErrorException('AWS 임시 권한 발급에 실패했습니다.');

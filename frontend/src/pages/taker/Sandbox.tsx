@@ -134,9 +134,11 @@ export default function Sandbox() {
       (signalingClient as any).on('sdpOffer', async (offer: any, remoteClientId: string) => {
         console.log('[KVS Master] Received offer from viewer:', remoteClientId);
         
-        const peerConnection = new RTCPeerConnection({
-          iceServers: [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }]
-        });
+        const iceServers = (creds.iceServers && creds.iceServers.length > 0) 
+          ? creds.iceServers 
+          : [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }];
+
+        const peerConnection = new RTCPeerConnection({ iceServers });
         peerConnectionsByClientId[remoteClientId] = peerConnection;
 
         // 로컬 트랙 추가
