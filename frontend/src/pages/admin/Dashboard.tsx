@@ -89,7 +89,6 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         };
 
         let offerRetryInterval: any = null;
-        let offerSent = false;
 
         signalingClient.on('open', async () => {
           console.log(`[KVS Admin] Viewer signaling opened. Channel: ${creds.channelArn}`);
@@ -107,7 +106,6 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             signalingClient.sendSdpOffer(peerConnection.localDescription as any);
-            offerSent = true;
           };
 
           await sendOffer();
