@@ -158,6 +158,8 @@ export class ExamService {
     if (!channel) {
       throw new Error("KVS Signaling Channel을 찾거나 생성할 수 없습니다.");
     }
+    console.log('[ExamService] KVS Channel Info:', JSON.stringify(channel, null, 2));
+
     const credentials = await this.aws.getTemporaryCredentials();
     const iceServers = await this.aws.getIceServers(channel.ChannelARN!);
 
