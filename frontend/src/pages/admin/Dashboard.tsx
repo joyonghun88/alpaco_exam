@@ -74,14 +74,22 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
 
         const peerConnection = new RTCPeerConnection({ iceServers });
 
+        peerConnection.onconnectionstatechange = () => {
+          console.log(`[KVS Admin] Connection state: ${peerConnection.connectionState}`);
+        };
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log(`[KVS Admin] ICE connection state: ${peerConnection.iceConnectionState}`);
+        };
+
         peerConnection.onicecandidate = ({ candidate }) => {
           if (candidate) {
+            console.log('[KVS Admin] Generated ICE candidate, sending...');
             signalingClient.sendIceCandidate(candidate);
           }
         };
 
         signalingClient.on('open', async () => {
-          console.log('[KVS Admin] Viewer signaling opened');
+          console.log('[KVS Admin] Viewer signaling opened, creating and sending offer');
           setStatus('수렴자 기기 연결 요청...');
           setLoading(false);
           peerConnection.addTransceiver('video', { direction: 'recvonly' });
@@ -91,11 +99,13 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         });
 
         signalingClient.on('sdpAnswer', async (answer: any) => {
+          console.log('[KVS Admin] Received sdpAnswer from master');
           setStatus('수험생 기기 응답함, 연결 처리...');
           await peerConnection.setRemoteDescription(answer);
         });
 
         signalingClient.on('iceCandidate', (candidate: any) => {
+          console.log('[KVS Admin] Received ICE candidate from master');
           peerConnection.addIceCandidate(candidate);
         });
 

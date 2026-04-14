@@ -163,15 +163,26 @@ export default function Sandbox() {
           console.error('[KVS Master] No stream available to send to viewer');
         }
 
+        peerConnection.onconnectionstatechange = () => {
+          console.log(`[KVS Master] Connection state: ${peerConnection.connectionState}`);
+        };
+        peerConnection.oniceconnectionstatechange = () => {
+          console.log(`[KVS Master] ICE connection state: ${peerConnection.iceConnectionState}`);
+        };
+
         peerConnection.onicecandidate = ({ candidate }) => {
           if (candidate) {
+            console.log('[KVS Master] Generated ICE candidate, sending...');
             (signalingClient as any).sendIceCandidate(candidate, remoteClientId);
           }
         };
 
+        console.log('[KVS Master] Setting remote description (offer)...');
         await peerConnection.setRemoteDescription(offer);
+        console.log('[KVS Master] Creating answer...');
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
+        console.log('[KVS Master] Sending answer to viewer...');
         (signalingClient as any).sendSdpAnswer(peerConnection.localDescription as any, remoteClientId);
       });
 
