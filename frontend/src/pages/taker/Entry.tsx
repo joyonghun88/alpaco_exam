@@ -72,17 +72,30 @@ export default function Entry() {
     }
   };
 
-  const handleStart = async () => {
-    if (!isChecked || !inviteCode) return;
+  const resetState = () => {
+    setInviteCode('');
+    setIsChecked(false);
+    setWaitingStartTime(null);
+    setWaitingMessage('');
+    setTermsAgreed({ privacy: false, camera: false, retention: false });
+    setIsTermsOpen(false);
+  };
+
+  const handleStart = async (forceEnter = false) => {
+    // 1. 기본 유효성 검사
+    if ((!isChecked && !forceEnter) || !inviteCode) return;
     
-    // 필수 동의 체크 확인
-    if (!termsAgreed.privacy || !termsAgreed.camera || !termsAgreed.retention) {
+    // 2. 약관 동의 확인
+    const isReadyForTerms = termsAgreed.privacy && (!isRequireCamera || termsAgreed.camera) && termsAgreed.retention;
+    if (!isReadyForTerms) {
        setIsTermsOpen(true);
        return;
     }
 
+    // 3. 카메라 필수 고사장일 경우 장비 점검 확인
     if (isRequireCamera && !hasCameraPermission) {
       alert('환경 점검이 완료되지 않았습니다. 카메라를 활성화해 주세요.');
+      setIsTermsOpen(false); // 모달 닫기 (장비 점검 유도)
       return;
     }
 
@@ -97,12 +110,12 @@ export default function Entry() {
       
       if (!response.ok) {
         if (data.type === 'NOT_STARTED_YET') {
+          setIsTermsOpen(false);
           setWaitingStartTime(data.startTime);
           setWaitingMessage(data.waitingMessage);
           setIsRequireCamera(data.isRequireCamera || false);
           setStandardTerms(data.standardTerms || '');
           setCameraTerms(data.cameraTerms || '');
-          // 대기 화면 진입 시에도 카메라 필수인 경우 미리 활성화 유도
           if (data.isRequireCamera && !hasCameraPermission) {
              startSystemCheck();
           }
@@ -118,6 +131,7 @@ export default function Entry() {
       setCameraTerms(data.examRoom.cameraTerms || '');
 
       if (requireCam && !hasCameraPermission) {
+        setIsTermsOpen(false);
         alert('이 고사장은 카메라 모니터링이 필수입니다. 환경 점검을 진행해 주세요.');
         return;
       }
@@ -247,7 +261,7 @@ export default function Entry() {
                {/* 오른쪽: 코드 입력 및 동의 */}
                <div className="flex flex-col justify-between">
                   <div className="space-y-6">
-                     <div>
+                     <div className="relative">
                         <label className="block text-xs font-black text-text-caption uppercase mb-3 ml-1">초대 코드 (Invitation)</label>
                         <input 
                            type="text" 
@@ -256,6 +270,15 @@ export default function Entry() {
                            onChange={(e) => setInviteCode(e.target.value)}
                            className="w-full text-2xl font-black px-6 py-4 bg-bg-section border-2 border-button-outline focus:border-primary focus:ring-8 focus:ring-primary/5 rounded-2xl outline-none transition-all uppercase placeholder:normal-case font-mono tracking-wider"
                         />
+                        {inviteCode && (
+                          <button 
+                            onClick={resetState}
+                            className="absolute right-4 top-[3.25rem] p-2 text-text-caption hover:text-primary transition-colors"
+                            title="코드 초기화"
+                          >
+                             <X size={20} />
+                          </button>
+                        )}
                      </div>
 
                      <div className="bg-bg-section/70 rounded-3xl p-6 border-2 border-button-outline space-y-4">
@@ -278,14 +301,20 @@ export default function Entry() {
                   </div>
 
                   {waitingStartTime ? (
-                  <div className="bg-primary p-8 rounded-[2rem] text-center text-white space-y-2 mt-6 shadow-xl shadow-primary/20">
+                  <div className="bg-primary p-8 rounded-[2rem] text-center text-white space-y-2 mt-6 shadow-xl shadow-primary/20 relative group">
                      <p className="text-[10px] font-black uppercase tracking-widest opacity-80">STARTING IN</p>
                      <p className="text-4xl font-black font-mono tracking-tighter">{countdown}</p>
                      <p className="text-xs font-bold pt-2 opacity-90">{waitingMessage}</p>
+                     <button 
+                       onClick={resetState}
+                       className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/40 rounded-xl text-[11px] font-black transition-all"
+                     >
+                        코드 다시 입력 (취소)
+                     </button>
                   </div>
                   ) : (
                   <button 
-                     onClick={handleStart}
+                     onClick={() => handleStart()}
                      disabled={!isChecked || !inviteCode}
                      className={`w-full flex items-center justify-center space-x-3 py-6 rounded-[2rem] font-black text-xl transition-all mt-6 shadow-lg transform active:scale-95 ${
                         isChecked && inviteCode 
@@ -329,12 +358,17 @@ export default function Entry() {
       {isTermsOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-text-title/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-button-outline">
-             <div className="p-10 border-b border-button-outline">
-                <div className="flex items-center space-x-3 mb-4">
-                   <ShieldCheck size={32} className="text-primary" />
-                   <h2 className="text-3xl font-black text-text-title">개인정보 수집 및 보안 동의</h2>
+             <div className="p-10 border-b border-button-outline flex justify-between items-start">
+                <div>
+                  <div className="flex items-center space-x-3 mb-4">
+                     <ShieldCheck size={32} className="text-primary" />
+                     <h2 className="text-3xl font-black text-text-title">개인정보 수집 및 보안 동의</h2>
+                  </div>
+                  <p className="text-sm text-text-caption font-bold">평가의 공정성과 데이터 보호를 위해 다음 사항에 대한 동의가 필요합니다.</p>
                 </div>
-                <p className="text-sm text-text-caption font-bold">평가의 공정성과 데이터 보호를 위해 다음 사항에 대한 동의가 필요합니다.</p>
+                <button onClick={() => setIsTermsOpen(false)} className="p-2 hover:bg-bg-section rounded-full transition-colors">
+                   <X size={24} className="text-text-caption" />
+                </button>
              </div>
              
              <div className="p-10 space-y-6 overflow-y-auto max-h-[60vh]">
@@ -399,10 +433,13 @@ export default function Entry() {
 
              <div className="p-10 bg-bg-section/30 flex items-center space-x-4">
                 <button 
-                   onClick={() => {
-                     setIsTermsOpen(false);
-                     handleStart();
-                   }}
+                   onClick={() => setIsTermsOpen(false)}
+                   className="px-8 py-5 bg-white border border-button-outline text-text-caption rounded-[2rem] font-black text-lg hover:bg-bg-section transition-all"
+                >
+                   취소
+                </button>
+                <button 
+                   onClick={() => handleStart(true)}
                    className="flex-1 py-5 bg-primary text-white rounded-[2rem] font-black text-lg shadow-xl shadow-primary/20 hover:bg-primary-strong disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                    disabled={!termsAgreed.privacy || (isRequireCamera && !termsAgreed.camera) || !termsAgreed.retention}
                 >
