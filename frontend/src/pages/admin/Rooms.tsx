@@ -48,10 +48,15 @@ export default function Rooms() {
     e.preventDefault();
     if (!form.examId || !form.roomName) return alert('정보를 모두 입력하세요.');
     try {
+      const payload = {
+        ...form,
+        startAt: form.startAt ? new Date(form.startAt).toISOString() : new Date().toISOString()
+      };
+      
       const res = await fetch(`${API_BASE_URL}/admin/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(form)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setForm({ examId: '', roomName: '', durationMinutes: 60, startAt: '', endAt: '', isRequireCamera: false });
@@ -81,10 +86,17 @@ export default function Rooms() {
 
   const handleUpdate = async (id: string) => {
     try {
+      // 서버 전송 전 로컬 시간을 UTC ISO 형식으로 변환
+      const payload = {
+        ...editForm,
+        startAt: editForm.startAt ? new Date(editForm.startAt).toISOString() : null,
+        endAt: editForm.endAt ? new Date(editForm.endAt).toISOString() : null
+      };
+
       const res = await fetch(`${API_BASE_URL}/admin/rooms/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         setEditingId(null);
