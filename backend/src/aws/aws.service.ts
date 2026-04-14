@@ -25,14 +25,18 @@ export class AwsService {
 
   constructor() {
     this.region = process.env.AWS_REGION || 'ap-northeast-2';
-    const credentials = {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-    };
+    const config: any = { region: this.region };
 
-    this.kinesisVideoClient = new KinesisVideoClient({ region: this.region, credentials });
-    this.archivedMediaClient = new KinesisVideoArchivedMediaClient({ region: this.region, credentials });
-    this.stsClient = new STSClient({ region: this.region, credentials });
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      config.credentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+
+    this.kinesisVideoClient = new KinesisVideoClient(config);
+    this.archivedMediaClient = new KinesisVideoArchivedMediaClient(config);
+    this.stsClient = new STSClient(config);
   }
 
   /**
@@ -53,14 +57,19 @@ export class AwsService {
       if (!httpsEndpoint) throw new Error('Signaling endpoint not found');
 
       // 2. ICE Server Config 가져오기
-      const signalingClient = new KinesisVideoSignalingClient({
+      const signalingConfig: any = {
         region: this.region,
         endpoint: httpsEndpoint,
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
-        }
-      });
+      };
+
+      if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+        signalingConfig.credentials = {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        };
+      }
+
+      const signalingClient = new KinesisVideoSignalingClient(signalingConfig);
 
       const { IceServerList } = await signalingClient.send(new GetIceServerConfigCommand({
         ChannelARN: channelArn
