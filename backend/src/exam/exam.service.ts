@@ -19,7 +19,8 @@ export class ExamService {
 
     // 보안 강화: 고시장 상태 및 시간 검증
     const now = new Date();
-    if (p.room.status !== 'IN_PROGRESS' || now < p.room.startAt || now > p.room.endAt) {
+    const isActiveStatus = p.room.status === 'READY' || p.room.status === 'IN_PROGRESS';
+    if (!isActiveStatus || now < p.room.startAt || now > p.room.endAt) {
       throw new Error("현재는 시험 문제를 조회할 수 있는 시간이 아닙니다.");
     }
 

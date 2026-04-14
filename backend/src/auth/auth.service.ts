@@ -35,18 +35,26 @@ export class AuthService {
     }
 
     // D. 시험 시작 가능 여부 확인 (READY 상태에서 시작 시각 전이면 대기)
-    if (room.status === 'READY' && now < room.startAt) {
-      throw new HttpException({
-        type: 'NOT_STARTED_YET',
-        message: '시험이 아직 시작되지 않았습니다.',
-        startTime: room.startAt,
-        waitingMessage: room.waitingMessage || '시험 시작 시간까지 잠시 기다려 주세요.',
-        waitingTitle: room.waitingTitle || 'AI 평가 샌드박스',
-        iconType: room.iconType || 'Activity',
-        isRequireCamera: room.isRequireCamera, // 카메라 설정 반환
-        standardTerms: room.standardTerms,
-        cameraTerms: room.cameraTerms
-      }, HttpStatus.FORBIDDEN);
+    if (room.status === 'READY') {
+      if (now < room.startAt) {
+        throw new HttpException({
+          type: 'NOT_STARTED_YET',
+          message: '시험이 아직 시작되지 않았습니다.',
+          startTime: room.startAt,
+          waitingMessage: room.waitingMessage || '시험 시작 시간까지 잠시 기다려 주세요.',
+          waitingTitle: room.waitingTitle || 'AI 평가 샌드박스',
+          iconType: room.iconType || 'Activity',
+          isRequireCamera: room.isRequireCamera,
+          standardTerms: room.standardTerms,
+          cameraTerms: room.cameraTerms
+        }, HttpStatus.FORBIDDEN);
+      } else {
+        // 이미 시작 시간이 지났는데 READY 상태인 경우 -> IN_PROGRESS로 자동 전환
+        await this.prisma.examRoom.update({
+          where: { id: room.id },
+          data: { status: 'IN_PROGRESS' }
+        });
+      }
     }
 
     // 3. 최초 입장 시 상태 업데이트 및 시간 기록
