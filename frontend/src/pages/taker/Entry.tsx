@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ShieldCheck, MonitorPlay, AlertTriangle, ArrowRight, Video, VideoOff, Camera, CheckCircle2, Settings, Globe } from 'lucide-react';
+import { ShieldCheck, MonitorPlay, AlertTriangle, ArrowRight, Video, VideoOff, Camera, CheckCircle2, Settings, Globe, X } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 
 
