@@ -148,7 +148,7 @@ export class ExamService {
     return { success: true, score: totalScore };
   }
 
-  async getKvsCredentials(participantId: string) {
+  async getKvsCredentials(participantId: string, role: 'MASTER' | 'VIEWER' = 'VIEWER') {
     const p = await this.prisma.participant.findUnique({
       where: { id: participantId }
     });
@@ -162,9 +162,9 @@ export class ExamService {
 
     const credentials = await this.aws.getTemporaryCredentials();
     const iceServers = await this.aws.getIceServers(channel.ChannelARN!);
-    const signalingEndpoint = await this.aws.getSignalingEndpoint(channel.ChannelARN!, 'VIEWER');
+    const signalingEndpoint = await this.aws.getSignalingEndpoint(channel.ChannelARN!, role);
     
-    console.log('[ExamService] Signaling Endpoint:', signalingEndpoint);
+    console.log(`[ExamService] Signaling Endpoint for ${role}:`, signalingEndpoint);
 
     return {
       channelArn: channel.ChannelARN,

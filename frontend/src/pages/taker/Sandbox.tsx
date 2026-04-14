@@ -110,7 +110,7 @@ export default function Sandbox() {
     if (signalingClientRef.current && !isRetry) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
+      const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=MASTER`);
       const creds = await res.json();
 
       const signalingClient = new SignalingClient({

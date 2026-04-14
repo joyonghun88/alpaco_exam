@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
 import { ExamService } from './exam.service';
 
 @Controller('exam')
@@ -21,7 +21,10 @@ export class ExamController {
   }
 
   @Get(':id/kvs-credentials')
-  async getKvsCredentials(@Param('id') id: string) {
-    return this.exam.getKvsCredentials(id);
+  async getKvsCredentials(
+    @Param('id') id: string,
+    @Query('role') role: 'MASTER' | 'VIEWER' = 'VIEWER'
+  ) {
+    return this.exam.getKvsCredentials(id, role);
   }
 }

@@ -54,7 +54,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
     async function startViewer() {
       try {
         setStatus('자격증명 확인...');
-        const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
+        const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=VIEWER`);
         const creds = await res.json();
 
         console.log('KVS Credentials received:', creds);
@@ -157,7 +157,7 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
     let signalingClient: any;
     async function init() {
       try {
-        const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
+        const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=VIEWER`);
         const creds = await res.json();
         console.log('KVS Credentials received:', creds);
         signalingClient = new SignalingClient({
