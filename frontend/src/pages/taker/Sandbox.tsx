@@ -207,6 +207,10 @@ export default function Sandbox() {
         console.error('[KVS Master] Error:', err);
       });
 
+      (signalingClient as any).on('message', (msg: any) => {
+        console.log('[KVS Master] Raw signaling message:', msg);
+      });
+
       signalingClientRef.current = signalingClient;
       signalingClient.open();
     } catch (err) {
