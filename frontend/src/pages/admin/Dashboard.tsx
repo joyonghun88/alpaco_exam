@@ -70,9 +70,20 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
           iceServers: [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }]
         });
 
+        // ICE Candidate 송신 로직 추가
+        peerConnection.onicecandidate = ({ candidate }) => {
+          if (candidate) {
+            signalingClient.sendIceCandidate(candidate);
+          }
+        };
+
         signalingClient.on('open', async () => {
           console.log('[KVS Admin] Viewer signaling opened');
           setLoading(false);
+          
+          // 비디오 수신 의사 명시
+          peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
           signalingClient.sendSdpOffer(peerConnection.localDescription);
@@ -144,8 +155,14 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
         const peerConnection = new RTCPeerConnection({ iceServers: [{ urls: `stun:stun.kinesisvideo.${creds.region}.amazonaws.com:443` }] });
+        
+        peerConnection.onicecandidate = ({ candidate }) => {
+          if (candidate) signalingClient.sendIceCandidate(candidate);
+        };
+
         signalingClient.on('open', async () => {
           setLoading(false);
+          peerConnection.addTransceiver('video', { direction: 'recvonly' });
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
           signalingClient.sendSdpOffer(peerConnection.localDescription);
