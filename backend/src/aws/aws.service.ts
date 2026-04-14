@@ -40,6 +40,26 @@ export class AwsService {
   }
 
   /**
+   * 시그널링 엔드포인트 가져오기
+   */
+  async getSignalingEndpoint(channelArn: string, role: 'MASTER' | 'VIEWER') {
+    try {
+      const { ResourceEndpointList } = await this.kinesisVideoClient.send(new GetSignalingChannelEndpointCommand({
+        ChannelARN: channelArn,
+        SingleMasterChannelEndpointConfiguration: {
+          Protocols: ['WSS', 'HTTPS'],
+          Role: role
+        }
+      }));
+
+      return ResourceEndpointList?.find(e => e.Protocol === 'WSS')?.ResourceEndpoint;
+    } catch (error) {
+      console.error('Failed to get signaling endpoint:', error);
+      return null;
+    }
+  }
+
+  /**
    * KVS ICE Servers (STUN/TURN) 목록 가져오기
    */
   async getIceServers(channelArn: string) {

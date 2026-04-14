@@ -58,15 +58,12 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         const creds = await res.json();
 
         signalingClient = new SignalingClient({
-          channelARN: creds.channelArn,
-          region: creds.region,
+          channelARN: creds.channelArn, 
+          region: creds.region, 
           role: Role.VIEWER,
           clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
-          credentials: {
-             accessKeyId: creds.accessKeyId,
-             secretAccessKey: creds.secretAccessKey,
-             sessionToken: creds.sessionToken,
-          },
+          endpoint: creds.signalingEndpoint,
+          credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
 
         const iceServers = (creds.iceServers && creds.iceServers.length > 0)
@@ -165,6 +162,7 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
           region: creds.region, 
           role: Role.VIEWER,
           clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
+          endpoint: creds.signalingEndpoint,
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
         
