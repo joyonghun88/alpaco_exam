@@ -112,8 +112,8 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         });
 
         signalingClient.open();
-      } catch (err) {
-        setStatus('시작 실패');
+      } catch (err: any) {
+        setStatus(`에러: ${err.message}`);
         console.error('Failed to start KvsViewer', err);
       }
     }

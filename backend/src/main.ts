@@ -11,8 +11,13 @@ dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // 0. 모든 요청 로그 기록 미들웨어
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
   // 1. 보안 헤더 설정 (Helmet)
-  // crossOriginResourcePolicy: false 설정은 S3 등 외부 리소스와 렌더링 충돌을 방지하기 위함입니다.
   app.use(helmet({
     crossOriginResourcePolicy: false,
   }));
