@@ -130,8 +130,12 @@ export default function Sandbox() {
       const peerConnectionsByClientId: Record<string, RTCPeerConnection> = {};
 
       (signalingClient as any).on('open', () => {
-        console.log('[KVS Master] Connected to signaling');
+        console.log(`[KVS Master] Connected to signaling. Channel: ${creds.channelArn}`);
         if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      });
+
+      (signalingClient as any).on('peerJoined', (clientId: string) => {
+        console.log(`[KVS Master] Peer joined: ${clientId}`);
       });
 
       (signalingClient as any).on('sdpOffer', async (offer: any, remoteClientId: string) => {
