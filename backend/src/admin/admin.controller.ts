@@ -201,6 +201,12 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('rooms/:id')
+  async updateRoom(@Param('id') id: string, @Body() body: any) {
+    return this.admin.updateRoom(id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('participants')
   async getParticipants(@Req() req: any) {
     return this.admin.getParticipants(req.user.userId);

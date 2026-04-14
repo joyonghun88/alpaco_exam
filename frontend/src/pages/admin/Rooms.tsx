@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Monitor, Calendar, Clock, Trash2, Users, FileText, CheckCircle2, ChevronDown, ChevronUp, RefreshCcw, Building, Target, X, Video } from 'lucide-react';
+import { Plus, Monitor, Calendar, Clock, Trash2, Users, FileText, CheckCircle2, ChevronDown, ChevronUp, RefreshCcw, Building, Target, X, Video, Edit2, Check } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,6 +26,8 @@ export default function Rooms() {
   const [form, setForm] = useState({ examId: '', roomName: '', durationMinutes: 60, startAt: '', isRequireCamera: false });
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [previewRoom, setPreviewRoom] = useState<Room | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ roomName: '', durationMinutes: 60, startAt: '' });
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -56,6 +58,31 @@ export default function Rooms() {
         fetchData();
       }
     } catch {}
+  };
+
+  const startEdit = (room: Room) => {
+    setEditingId(room.id);
+    setEditForm({
+      roomName: room.roomName,
+      durationMinutes: room.durationMinutes,
+      startAt: room.startAt.slice(0, 16) // datetime-local format
+    });
+  };
+
+  const handleUpdate = async (id: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/rooms/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        setEditingId(null);
+        fetchData();
+      }
+    } catch {
+      alert('수정에 실패했습니다.');
+    }
   };
 
   const deleteRoom = async (id: string) => {
@@ -180,7 +207,16 @@ export default function Rooms() {
                          }`}>
                            {room.status}
                          </div>
-                         <h3 className="text-2xl font-black text-text-title group-hover:text-primary transition-colors">{room.roomName}</h3>
+                         {editingId === room.id ? (
+                           <input 
+                             value={editForm.roomName}
+                             onChange={e => setEditForm({...editForm, roomName: e.target.value})}
+                             className="text-2xl font-black text-primary bg-bg-section border-b-2 border-primary outline-none px-2 py-1 rounded-t-lg"
+                             autoFocus
+                           />
+                         ) : (
+                           <h3 className="text-2xl font-black text-text-title group-hover:text-primary transition-colors">{room.roomName}</h3>
+                         )}
                          {room.isRequireCamera && (
                            <div className="bg-primary/10 text-primary p-1.5 rounded-lg flex items-center justify-center" title="카메라 필수">
                               <Video size={18} />
@@ -188,6 +224,32 @@ export default function Rooms() {
                          )}
                       </div>
                       <div className="flex items-center space-x-2">
+                         {editingId === room.id ? (
+                           <>
+                             <button 
+                               onClick={() => handleUpdate(room.id)}
+                               className="p-3 bg-primary text-white rounded-2xl hover:bg-primary-strong transition-all shadow-lg shadow-primary/20"
+                               title="저장"
+                             >
+                                <Check size={20} />
+                             </button>
+                             <button 
+                               onClick={() => setEditingId(null)}
+                               className="p-3 bg-bg-section text-text-caption rounded-2xl hover:bg-button-outline transition-colors"
+                               title="취소"
+                             >
+                                <X size={20} />
+                             </button>
+                           </>
+                         ) : (
+                           <button 
+                             onClick={() => startEdit(room)}
+                             className="p-3 bg-bg-section text-text-title rounded-2xl hover:bg-primary hover:text-white transition-all"
+                             title="정보 수정"
+                           >
+                              <Edit2 size={20} />
+                           </button>
+                         )}
                          <button 
                            onClick={() => setExpandedId(expandedId === room.id ? null : room.id)}
                            className="p-3 bg-bg-section rounded-2xl hover:bg-button-outline transition-colors"
@@ -214,7 +276,19 @@ export default function Rooms() {
                       </div>
                       <div className="space-y-1">
                          <p className="text-[10px] font-black text-text-caption uppercase tracking-widest flex items-center"><Clock size={12} className="mr-1" /> 시험 시간</p>
-                         <p className="text-sm font-bold text-text-title">{room.durationMinutes}분</p>
+                         {editingId === room.id ? (
+                           <div className="flex items-center space-x-1">
+                             <input 
+                               type="number"
+                               value={editForm.durationMinutes}
+                               onChange={e => setEditForm({...editForm, durationMinutes: Number(e.target.value)})}
+                               className="w-16 bg-bg-section border border-primary rounded px-2 py-1 text-sm font-black outline-none"
+                             />
+                             <span className="text-xs font-bold text-text-caption">분</span>
+                           </div>
+                         ) : (
+                           <p className="text-sm font-bold text-text-title">{room.durationMinutes}분</p>
+                         )}
                       </div>
                       <div className="space-y-1">
                          <p className="text-[10px] font-black text-text-caption uppercase tracking-widest flex items-center"><CheckCircle2 size={12} className="mr-1" /> 문항 수</p>
@@ -223,7 +297,19 @@ export default function Rooms() {
                    </div>
 
                    <div className="flex items-center space-x-6 text-[11px] font-bold text-text-caption">
-                      <div className="flex items-center"><Calendar size={14} className="mr-1.5 opacity-50" /> {formatDate(room.startAt)} 오픈</div>
+                      <div className="flex items-center">
+                        <Calendar size={14} className="mr-1.5 opacity-50" /> 
+                        {editingId === room.id ? (
+                           <input 
+                             type="datetime-local"
+                             value={editForm.startAt}
+                             onChange={e => setEditForm({...editForm, startAt: e.target.value})}
+                             className="bg-bg-section border border-primary rounded px-2 py-1 text-[10px] font-black outline-none"
+                           />
+                        ) : (
+                          <>{formatDate(room.startAt)} 오픈</>
+                        )}
+                      </div>
                       <div className="w-1 h-1 bg-button-outline rounded-full" />
                       <div>최종 마감: {formatDate(room.endAt)}</div>
                    </div>

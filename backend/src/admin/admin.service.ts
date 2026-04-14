@@ -405,4 +405,26 @@ export class AdminService {
       }
     });
   }
+
+  async updateRoom(id: string, data: { roomName?: string, durationMinutes?: number, startAt?: string, isRequireCamera?: boolean }) {
+    const updateData: any = { ...data };
+    
+    // 시간 관련 수정 패치
+    if (data.startAt || data.durationMinutes) {
+      const current = await this.prisma.examRoom.findUnique({ where: { id } });
+      if (current) {
+        const newStart = data.startAt ? new Date(data.startAt) : current.startAt;
+        const newDuration = data.durationMinutes !== undefined ? data.durationMinutes : current.durationMinutes;
+        
+        updateData.startAt = newStart;
+        updateData.durationMinutes = newDuration;
+        updateData.endAt = new Date(newStart.getTime() + newDuration * 60 * 1000);
+      }
+    }
+    
+    return this.prisma.examRoom.update({
+      where: { id },
+      data: updateData
+    });
+  }
 }

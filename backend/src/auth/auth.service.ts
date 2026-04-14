@@ -20,12 +20,12 @@ export class AuthService {
     const room = participant.room;
 
     // A. 이미 시험을 제출한 인원인지 확인
-    if (participant.status === 'SUBMITTED') {
+    if (participant.status === 'COMPLETED') {
       throw new HttpException('이미 시험을 제출하셨습니다. 재입장이 불가능합니다.', HttpStatus.FORBIDDEN);
     }
 
     // B. 고사장 상태가 '종료'인 경우
-    if (room.status === 'FINISHED') {
+    if (room.status === 'CLOSED') {
       throw new HttpException('이미 종료된 고사장입니다. 입장이 불가능합니다.', HttpStatus.FORBIDDEN);
     }
 
