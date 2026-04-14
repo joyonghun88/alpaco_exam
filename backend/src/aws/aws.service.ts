@@ -145,15 +145,6 @@ export class AwsService {
           ChannelType: 'SINGLE_MASTER',
         });
         const { ChannelARN } = await this.kinesisVideoClient.send(createCommand);
-        
-        const storageCommand = new UpdateMediaStorageConfigurationCommand({
-          ChannelARN,
-          MediaStorageConfiguration: {
-            Status: 'ENABLED',
-            StreamARN: streamInfo?.StreamARN,
-          }
-        });
-        await this.kinesisVideoClient.send(storageCommand);
 
         const { ChannelInfo } = await this.kinesisVideoClient.send(new DescribeSignalingChannelCommand({ ChannelName: channelName }));
         return ChannelInfo;
