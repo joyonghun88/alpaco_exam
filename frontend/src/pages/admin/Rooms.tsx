@@ -60,12 +60,19 @@ export default function Rooms() {
     } catch {}
   };
 
+  const getLocalISO = (dateStr: string) => {
+    const d = new Date(dateStr);
+    const offset = d.getTimezoneOffset() * 60000;
+    const local = new Date(d.getTime() - offset);
+    return local.toISOString().slice(0, 16);
+  };
+
   const startEdit = (room: Room) => {
     setEditingId(room.id);
     setEditForm({
       roomName: room.roomName,
       durationMinutes: room.durationMinutes,
-      startAt: room.startAt.slice(0, 16),
+      startAt: getLocalISO(room.startAt),
       isRequireCamera: room.isRequireCamera
     });
   };
