@@ -163,6 +163,8 @@ export class ExamService {
     const credentials = await this.aws.getTemporaryCredentials();
     const iceServers = await this.aws.getIceServers(channel.ChannelARN!);
     const signalingEndpoint = await this.aws.getSignalingEndpoint(channel.ChannelARN!, 'VIEWER');
+    
+    console.log('[ExamService] Signaling Endpoint:', signalingEndpoint);
 
     return {
       channelArn: channel.ChannelARN,

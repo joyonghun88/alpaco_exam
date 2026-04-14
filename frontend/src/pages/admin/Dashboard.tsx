@@ -57,12 +57,14 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
         const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
         const creds = await res.json();
 
+        console.log('KVS Credentials received:', creds);
         signalingClient = new SignalingClient({
           channelARN: creds.channelArn, 
           region: creds.region, 
           role: Role.VIEWER,
           clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
           endpoint: creds.signalingEndpoint,
+          channelEndpoint: creds.signalingEndpoint, // Redundancy for SDK compatibility
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
 
@@ -157,12 +159,14 @@ function KvsViewerItem({ participantId }: { participantId: string }) {
       try {
         const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials`);
         const creds = await res.json();
+        console.log('KVS Credentials received:', creds);
         signalingClient = new SignalingClient({
           channelARN: creds.channelArn, 
           region: creds.region, 
           role: Role.VIEWER,
           clientId: `admin-${Math.random().toString(36).substring(2, 9)}`,
           endpoint: creds.signalingEndpoint,
+          channelEndpoint: creds.signalingEndpoint, // Redundancy for SDK compatibility
           credentials: { accessKeyId: creds.accessKeyId, secretAccessKey: creds.secretAccessKey, sessionToken: creds.sessionToken },
         } as any);
         
