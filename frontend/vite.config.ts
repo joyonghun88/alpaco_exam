@@ -12,6 +12,21 @@ export default defineConfig({
       include: ['events', 'buffer', 'process'],
     }),
   ],
+  server: {
+    // Local dev convenience: keep VITE_API_URL=/api and let Vite proxy to Nest (http://localhost:3000/api).
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      // Socket.io endpoint used by the taker sandbox (and admin updates)
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       events: 'events',
