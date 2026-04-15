@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AwsService } from '../aws/aws.service';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AdminService {
   constructor(
     private prisma: PrismaService,
-    private aws: AwsService
+    private aws: AwsService,
+    private email: EmailService
   ) {}
 
   // 감사 로그 기록 유틸리티 (개인정보보호법 준수용)
@@ -281,9 +283,11 @@ export class AdminService {
     const frontendUrl = process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
     const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
     
-    console.log(`[EMAIL SEND] To: ${p.email}`);
-    console.log(`[EMAIL BODY] 안녕하세요 ${p.name}님, [${p.room.roomName}] 초대 코드: ${p.invitationCode}`);
-    console.log(`[EMAIL LINK] 접속 링크: ${inviteLink}`);
+    // 이메일 전송
+    const subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
+    const html = this.email.getInvitationTemplate(p.name, p.room.roomName, p.invitationCode, inviteLink);
+    
+    await this.email.sendEmail(p.email, subject, html);
 
     return { success: true, message: `${p.email}로 초대 링크가 전송되었습니다.` };
   }
@@ -294,20 +298,27 @@ export class AdminService {
       include: { room: true }
     });
 
+    const results: any[] = [];
     for (const p of participants) {
       const frontendUrl = process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
       const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
+      
+      let subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
       let content = template
         .replace(/{{name}}/g, p.name)
         .replace(/{{room}}/g, p.room.roomName)
         .replace(/{{code}}/g, p.invitationCode)
         .replace(/{{link}}/g, inviteLink);
 
-      console.log(`[BULK EMAIL SEND] To: ${p.email}`);
-      console.log(`[CONTENT]\n${content}\n-------------------`);
+      try {
+        await this.email.sendEmail(p.email, subject, content);
+        results.push({ email: p.email, status: 'SUCCESS' });
+      } catch (e) {
+        results.push({ email: p.email, status: 'FAILED', error: e.message });
+      }
     }
 
-    return { success: true, count: participants.length };
+    return { success: true, count: participants.length, results };
   }
   // 5. 고사장별 요약 통계 조회 (대시보드 초기 화면용)
   async getRoomSummary() {

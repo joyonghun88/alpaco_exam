@@ -1,0 +1,9 @@
+node_modules
+dist
+error.log
+out.txt
+.env
+.env.production
+.git
+.gitignore
+uploads

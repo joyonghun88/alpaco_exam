@@ -11,6 +11,9 @@ dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // 0. API 경로 프리픽스 설정
+  app.setGlobalPrefix('api');
+
   // 0. 모든 요청 로그 기록 미들웨어
   app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);

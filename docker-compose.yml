@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  # Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: alpaco_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=alpaco_user
+      - POSTGRES_PASSWORD=alpaco_password
+      - POSTGRES_DB=alpaco_exam_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   # Backend API Server
   backend:
     build:
@@ -19,6 +33,19 @@ services:
       - PORT=3000
     depends_on:
       - redis
+      - postgres
+
+  # Frontend Web App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: alpaco_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
   # Redis for Socket.io & Cache
   redis:
@@ -31,3 +58,4 @@ services:
 
 volumes:
   redis_data:
+  postgres_data:

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -9,9 +10,12 @@ import { AdminModule } from './admin/admin.module';
 import { EventsModule } from './events/events.module';
 import { ExamModule } from './exam/exam.module';
 import { AwsModule } from './aws/aws.module';
+import { RedisModule } from './redis/redis.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100, // 1분당 100회 요청 제한
@@ -21,7 +25,9 @@ import { AwsModule } from './aws/aws.module';
     AdminModule, 
     EventsModule, 
     ExamModule, 
-    AwsModule
+    AwsModule,
+    RedisModule,
+    EmailModule
   ],
   controllers: [AppController],
   providers: [
