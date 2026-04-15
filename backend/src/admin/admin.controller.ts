@@ -269,8 +269,9 @@ export class AdminController {
       fileSize: 10 * 1024 * 1024, // 10MB 제한
     }
   }))
-  async uploadFile(@UploadedFile() file: any) {
+  async uploadFile(@UploadedFile() file: any, @Req() req: any) {
     if (!file) throw new BadRequestException('파일이 업로드되지 않았습니다.');
-    return { url: `http://localhost:3000/uploads/${file.filename}` };
+    const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+    return { url: `${baseUrl}/uploads/${file.filename}` };
   }
 }

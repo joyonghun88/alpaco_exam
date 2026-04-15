@@ -22,9 +22,21 @@ async function bootstrap() {
     crossOriginResourcePolicy: false,
   }));
 
-  // 2. CORS 설정
+  // 2. CORS 설정 (프로덕션에서는 허용 도메인 제한)
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
+
   app.enableCors({
-    origin: '*',
+    origin: (origin, callback) => {
+      // 서버 간 호출(origin 없음)이나 허용 목록에 포함된 경우 허용
+      if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
+        callback(null, true);
+      } else {
+        callback(null, true); // 알파 기간에는 경고만 기록하고 허용
+        console.warn(`[CORS] Unregistered origin: ${origin}`);
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

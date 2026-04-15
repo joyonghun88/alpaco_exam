@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AwsService } from '../aws/aws.service';
 
@@ -15,17 +15,17 @@ export class ExamService {
       include: { room: true }
     });
     
-    if (!p) throw new Error("Participant not found");
+    if (!p) throw new NotFoundException('응시자 정보를 찾을 수 없습니다.');
 
     // 보안 강화: 고시장 상태 및 시간 검증
     const now = new Date();
     const isActiveStatus = p.room.status === 'READY' || p.room.status === 'IN_PROGRESS';
     if (!isActiveStatus || now < p.room.startAt || now > p.room.endAt) {
-      throw new Error("현재는 시험 문제를 조회할 수 있는 시간이 아닙니다.");
+      throw new ForbiddenException('현재는 시험 문제를 조회할 수 있는 시간이 아닙니다.');
     }
 
     if (p.status === 'COMPLETED' || p.status === 'DISQUALIFIED') {
-      throw new Error("이미 제출 완료되었거나 실격된 응시자입니다.");
+      throw new ForbiddenException('이미 제출 완료되었거나 실격된 응시자입니다.');
     }
 
     const examQuestions = await this.prisma.examQuestion.findMany({
@@ -83,15 +83,15 @@ export class ExamService {
     const p = await this.prisma.participant.findUnique({
       where: { id: participantId }, include: { room: true }
     });
-    if (!p) throw new Error("Participant not found");
+    if (!p) throw new NotFoundException('응시자 정보를 찾을 수 없습니다.');
 
     const now = new Date();
     if (p.room.status !== 'IN_PROGRESS' || now > p.room.endAt) {
-      throw new Error("시험 종료 후에는 답안을 제출할 수 없습니다.");
+      throw new ForbiddenException('시험 종료 후에는 답안을 제출할 수 없습니다.');
     }
 
     if (p.status !== 'TESTING') {
-      throw new Error("현재 응시 중 상태가 아닙니다.");
+      throw new ForbiddenException('현재 응시 중 상태가 아닙니다.');
     }
 
     const examQuestions = await this.prisma.examQuestion.findMany({ 
@@ -152,11 +152,11 @@ export class ExamService {
     const p = await this.prisma.participant.findUnique({
       where: { id: participantId }
     });
-    if (!p) throw new Error("Participant not found");
+    if (!p) throw new NotFoundException('응시자 정보를 찾을 수 없습니다.');
 
     const channel = await this.aws.getOrCreateSignalingChannel(participantId);
     if (!channel) {
-      throw new Error("KVS Signaling Channel을 찾거나 생성할 수 없습니다.");
+      throw new BadRequestException('KVS Signaling Channel을 찾거나 생성할 수 없습니다.');
     }
     console.log('[ExamService] KVS Channel Info:', JSON.stringify(channel, null, 2));
 

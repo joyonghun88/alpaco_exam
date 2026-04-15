@@ -25,6 +25,7 @@ export default function Sandbox() {
   const [socketInst, setSocketInst] = useState<any>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [essayContent, setEssayContent] = useState<string>('');
   
   const isSubmittingRef = useRef(false);
   const showGuideRef = useRef(showGuide);
@@ -92,18 +93,56 @@ export default function Sandbox() {
       }
     };
 
+    // [Step 1] 새로고침 및 창 닫기 방지
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isSubmittingRef.current && !isSubmitted) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome에서는 이 값을 설정해야 경고창이 뜹니다.
+      }
+    };
+
     window.addEventListener('blur', handleBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       clearInterval(timerInt);
       clearTimeout(reconnectTimeoutRef.current);
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       socket.disconnect();
       stopStreaming();
     };
-  }, [participantId]);
+  }, [participantId, isSubmitted]);
+
+  // 1-1. 시간 종료 시 자동 제출
+  useEffect(() => {
+    if (timeLeft === 0 && !isSubmitted && !isSubmittingRef.current && questions.length > 0 && !showGuide) {
+      alert('시험 시간이 종료되었습니다. 답안이 자동으로 제출됩니다.');
+      handleAutoSubmit();
+    }
+  }, [timeLeft, isSubmitted, questions, showGuide]);
+
+  const handleAutoSubmit = async () => {
+    isSubmittingRef.current = true;
+    try {
+      const res = await fetch(`${API_BASE_URL}/exam/${participantId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers })
+      });
+      if (res.ok) {
+        localStorage.removeItem(`answers_${participantId}`);
+        setIsSubmitted(true);
+        if (socketInst) socketInst.emit('admin_update', { event: 'SUBMITTED' });
+        if (document.fullscreenElement) document.exitFullscreen();
+      }
+    } catch(e) {
+      isSubmittingRef.current = false;
+      console.error('자동 제출 실패:', e);
+    }
+  };
 
   // 2. KVS 스트리밍 및 자동 재연결 로직
   const startStreaming = useCallback(async (isRetry = false) => {
@@ -245,6 +284,11 @@ export default function Sandbox() {
 
   // 4. 답안 선택 및 자동 저장 (LocalStorage + API)
   const handleOptionSelect = async (qId: string, optIndex: number) => {
+    // 시간 만료 시 답안 변경 차단
+    if (timeLeft <= 0) {
+      alert('시험 시간이 종료되어 답안을 변경할 수 없습니다.');
+      return;
+    }
     const newAnswers = { ...answers, [qId]: optIndex };
     setAnswers(newAnswers);
     
@@ -265,6 +309,47 @@ export default function Sandbox() {
       setIsSyncing(false);
     }
   };
+
+  // [Step 2] 주관식(ESSAY) 전용 Debounce 저장 로직
+  const debounceTimerRef = useRef<any>(null);
+
+  const handleEssayChange = (qId: string, content: string) => {
+    // 시간 만료 시 답안 변경 차단
+    if (timeLeft <= 0) return;
+    setEssayContent(content);
+    
+    // 즉시 로컬 상태 반영 (UI 응답성)
+    const newAnswers = { ...answers, [qId]: content };
+    setAnswers(newAnswers);
+    localStorage.setItem(`answers_${participantId}`, JSON.stringify(newAnswers));
+
+    // 기존 타이머 제거
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    // 1초 뒤에 서버로 전송 (Debouncing)
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsSyncing(true);
+      try {
+        await fetch(`${API_BASE_URL}/exam/${participantId}/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionId: qId, answer: content })
+        });
+      } catch (e) {
+        console.error('Essay progress sync failed');
+      } finally {
+         setIsSyncing(false);
+      }
+    }, 1000);
+  };
+
+  // 문항 변경 시 주관식 내용 동기화
+  useEffect(() => {
+    const currentQ = questions[currentQIndex];
+    if (currentQ?.type === 'ESSAY') {
+      setEssayContent((answers[currentQ.id] as string) || '');
+    }
+  }, [currentQIndex, questions, answers]);
 
   const handleSubmit = async () => {
     isSubmittingRef.current = true;
@@ -500,7 +585,8 @@ export default function Sandbox() {
                     </h2>
 
                     <div className="space-y-4 mb-24">
-                       {currentQ.content.options.map((opt, idx) => {
+                       {/* 객관식 (MULTIPLE_CHOICE) */}
+                       {currentQ.type === 'MULTIPLE_CHOICE' && currentQ.content.options.map((opt, idx) => {
                           const isSelected = answers[currentQ.id] === idx;
                           return (
                             <button 
@@ -520,10 +606,28 @@ export default function Sandbox() {
                                </div>
                                <span className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-atomic-gray-300'}`}>
                                   {opt}
-                               </span>
+                                </span>
                             </button>
                           );
                        })}
+
+                       {/* 주관식 (ESSAY) */}
+                       {currentQ.type === 'ESSAY' && (
+                         <div className="space-y-4">
+                           <textarea
+                             value={essayContent}
+                             onChange={(e) => handleEssayChange(currentQ.id, e.target.value)}
+                             placeholder="정답 및 해설을 입력해 주세요..."
+                             className="w-full h-80 bg-white/5 border-2 border-white/10 rounded-[2rem] p-8 text-white text-xl font-medium focus:border-ai-accent focus:outline-none transition-all resize-none"
+                             maxLength={3000}
+                           />
+                           <div className="flex justify-end px-4">
+                             <span className={`text-xs font-black ${essayContent.length > 2900 ? 'text-red-500' : 'text-atomic-gray-400'}`}>
+                               {essayContent.length} / 3000 자
+                             </span>
+                           </div>
+                         </div>
+                       )}
                     </div>
                  </div>
               </section>
