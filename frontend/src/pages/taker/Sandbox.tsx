@@ -17,7 +17,7 @@ interface Question {
 export default function Sandbox() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, number | string>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
   
   const [showGuide, setShowGuide] = useState(true);
@@ -347,7 +347,7 @@ export default function Sandbox() {
   useEffect(() => {
     const currentQ = questions[currentQIndex];
     if (currentQ?.type === 'ESSAY') {
-      setEssayContent((answers[currentQ.id] as string) || '');
+      setEssayContent(String(answers[currentQ.id] ?? ''));
     }
   }, [currentQIndex, questions, answers]);
 
