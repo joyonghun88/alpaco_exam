@@ -72,8 +72,15 @@ export default function Sandbox() {
        setTimeLeft(remaining > 0 ? remaining : 0);
     }
 
-    const socket = io(SOCKET_URL);
+    const socket = io(SOCKET_URL, { auth: { participantId } });
     setSocketInst(socket);
+
+    const sendHeartbeat = () => {
+      socket.emit('presence_heartbeat', { participantId });
+    };
+
+    socket.on('connect', sendHeartbeat);
+    const heartbeatInt = setInterval(sendHeartbeat, 20000);
 
     const timerInt = setInterval(() => {
       setTimeLeft(prev => prev > 0 ? prev - 1 : 0);
@@ -107,10 +114,12 @@ export default function Sandbox() {
 
     return () => {
       clearInterval(timerInt);
+      clearInterval(heartbeatInt);
       clearTimeout(reconnectTimeoutRef.current);
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      socket.off('connect', sendHeartbeat);
       socket.disconnect();
       stopStreaming();
     };

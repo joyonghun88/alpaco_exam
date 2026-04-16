@@ -29,8 +29,8 @@ let ExamController = class ExamController {
     async saveProgress(id, body) {
         return this.exam.saveProgress(id, body.questionId, body.answer);
     }
-    async getKvsCredentials(id) {
-        return this.exam.getKvsCredentials(id);
+    async getKvsCredentials(id, role = 'VIEWER') {
+        return this.exam.getKvsCredentials(id, role);
     }
 };
 exports.ExamController = ExamController;
@@ -60,8 +60,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)(':id/kvs-credentials'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('role')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", Promise)
 ], ExamController.prototype, "getKvsCredentials", null);
 exports.ExamController = ExamController = __decorate([

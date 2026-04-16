@@ -1,9 +1,16 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { AwsService } from '../aws/aws.service';
+import { EmailService } from '../email/email.service';
+import { PresenceService } from '../presence/presence.service';
 export declare class AdminService {
     private prisma;
     private aws;
-    constructor(prisma: PrismaService, aws: AwsService);
+    private email;
+    private presence;
+    constructor(prisma: PrismaService, aws: AwsService, email: EmailService, presence: PresenceService);
+    private escapeHtml;
+    private toSimpleHtmlFromText;
+    private getFrontendUrl;
     logAdminAction(adminId: string, action: string, targetId?: string, details?: string, ip?: string): Promise<{
         id: string;
         createdAt: Date;
@@ -19,6 +26,7 @@ export declare class AdminService {
         email: string;
         roomName: string;
         status: import("@prisma/client").$Enums.ParticipantStatus;
+        isOnline: boolean;
         startedAt: Date | null;
         violationCount: number;
         inviteCode: string;
@@ -260,10 +268,58 @@ export declare class AdminService {
     sendInvitation(participantId: string): Promise<{
         success: boolean;
         message: string;
+        inviteCode?: undefined;
+        inviteLink?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        inviteCode: string;
+        inviteLink: string;
+    }>;
+    getParticipantGrading(adminId: string, participantId: string): Promise<{
+        participant: {
+            id: string;
+            name: string;
+            email: string;
+            status: import("@prisma/client").$Enums.ParticipantStatus;
+            roomId: string;
+            roomName: string;
+            examTitle: string;
+        };
+        questions: {
+            questionId: any;
+            orderNum: number;
+            point: number;
+            type: any;
+            content: any;
+            correctAnswer: any;
+            submission: {
+                answerContent: import("@prisma/client/runtime/library").JsonValue;
+                earnedPoint: number;
+                gradingStatus: import("@prisma/client").$Enums.GradingStatus;
+            } | {
+                answerContent: {
+                    answer: null;
+                };
+                earnedPoint: number;
+                gradingStatus: string;
+            };
+        }[];
+    }>;
+    gradeParticipantAnswer(adminId: string, participantId: string, questionId: string, earnedPoint: number): Promise<{
+        success: boolean;
+        questionId: string;
+        earnedPoint: number;
+    }>;
+    sendSelectedInvitations(participantIds: string[], template: string): Promise<{
+        success: boolean;
+        count: number;
+        results: any[];
     }>;
     sendBulkInvitations(roomId: string, template: string): Promise<{
         success: boolean;
         count: number;
+        results: any[];
     }>;
     getRoomSummary(): Promise<{
         id: string;
@@ -286,6 +342,12 @@ export declare class AdminService {
         };
     }[]>;
     renameCategory(oldName: string, newName: string): Promise<import("@prisma/client").Prisma.BatchPayload>;
+    moveQuestionsToCategory(questionIds: string[], targetCategory: string): Promise<{
+        moved: number;
+    }>;
+    deleteCategory(category: string): Promise<{
+        deleted: number;
+    }>;
     updateRoomStatus(id: string, status: string): Promise<{
         id: string;
         roomName: string;
@@ -309,6 +371,29 @@ export declare class AdminService {
         icon: string;
         standardTerms?: string;
         cameraTerms?: string;
+    }): Promise<{
+        id: string;
+        roomName: string;
+        startAt: Date;
+        endAt: Date;
+        durationMinutes: number;
+        status: import("@prisma/client").$Enums.RoomStatus;
+        isShuffleQuestions: boolean;
+        isRequireCamera: boolean;
+        violationLimit: number;
+        waitingMessage: string | null;
+        waitingTitle: string | null;
+        iconType: string | null;
+        standardTerms: string | null;
+        cameraTerms: string | null;
+        examId: string;
+    }>;
+    updateRoom(id: string, data: {
+        roomName?: string;
+        durationMinutes?: number;
+        startAt?: string;
+        endAt?: string;
+        isRequireCamera?: boolean;
     }): Promise<{
         id: string;
         roomName: string;

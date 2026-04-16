@@ -10,13 +10,16 @@ exports.ExamModule = void 0;
 const common_1 = require("@nestjs/common");
 const exam_controller_1 = require("./exam.controller");
 const exam_service_1 = require("./exam.service");
+const sync_service_1 = require("./sync.service");
+const aws_module_1 = require("../aws/aws.module");
 let ExamModule = class ExamModule {
 };
 exports.ExamModule = ExamModule;
 exports.ExamModule = ExamModule = __decorate([
     (0, common_1.Module)({
+        imports: [aws_module_1.AwsModule],
         controllers: [exam_controller_1.ExamController],
-        providers: [exam_service_1.ExamService],
+        providers: [exam_service_1.ExamService, sync_service_1.SyncService],
     })
 ], ExamModule);
 //# sourceMappingURL=exam.module.js.map

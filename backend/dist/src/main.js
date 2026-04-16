@@ -46,12 +46,28 @@ const helmet_1 = __importDefault(require("helmet"));
 dotenv.config();
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    app.setGlobalPrefix('api');
+    app.use((req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        next();
+    });
     app.use((0, helmet_1.default)({
         crossOriginResourcePolicy: false,
     }));
+    const allowedOrigins = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',')
+        : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
     app.enableCors({
-        origin: [/https?:\/\/localhost:\d+/],
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
+                callback(null, true);
+            }
+            else {
+                console.warn(`[CORS] Blocked unregistered origin: ${origin}`);
+                callback(null, false);
+            }
+        },
+        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
     app.useGlobalPipes(new common_1.ValidationPipe({

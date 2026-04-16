@@ -21,12 +21,13 @@ export class EmailService {
     });
   }
 
-  async sendEmail(to: string, subject: string, html: string) {
+  async sendEmail(to: string, subject: string, html: string, text?: string) {
     try {
       const info = await this.transporter.sendMail({
         from: `Alpaco Exam Manager <${this.senderEmail}>`,
         to,
         subject,
+        text,
         html,
       });
       console.log(`[EmailService] Email sent to ${to}: ${info.messageId}`);

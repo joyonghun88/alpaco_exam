@@ -16,11 +16,39 @@ exports.EventsGateway = void 0;
 const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const prisma_service_1 = require("../prisma/prisma.service");
+const presence_service_1 = require("../presence/presence.service");
+const allowedSocketOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
 let EventsGateway = class EventsGateway {
     prisma;
+    presence;
     server;
-    constructor(prisma) {
+    constructor(prisma, presence) {
         this.prisma = prisma;
+        this.presence = presence;
+    }
+    async handleConnection(client) {
+        const participantIdRaw = client.handshake.auth?.participantId ??
+            client.handshake.query?.participantId;
+        const participantId = typeof participantIdRaw === 'string' ? participantIdRaw : '';
+        if (!participantId)
+            return;
+        client.data.participantId = participantId;
+        await this.presence.markOnline(participantId, client.id);
+    }
+    async handleDisconnect(client) {
+        const participantId = client.data?.participantId;
+        if (!participantId)
+            return;
+        await this.presence.markOffline(participantId, client.id);
+    }
+    async handleHeartbeat(data, client) {
+        const participantId = data?.participantId || client.data?.participantId || '';
+        if (!participantId)
+            return;
+        client.data.participantId = participantId;
+        await this.presence.heartbeat(participantId, client.id);
     }
     async handleViolation(data, client) {
         if (!data.participantId)
@@ -40,6 +68,14 @@ __decorate([
     __metadata("design:type", socket_io_1.Server)
 ], EventsGateway.prototype, "server", void 0);
 __decorate([
+    (0, websockets_1.SubscribeMessage)('presence_heartbeat'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
+    __metadata("design:returntype", Promise)
+], EventsGateway.prototype, "handleHeartbeat", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('report_violation'),
     __param(0, (0, websockets_1.MessageBody)()),
     __param(1, (0, websockets_1.ConnectedSocket)()),
@@ -48,7 +84,19 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], EventsGateway.prototype, "handleViolation", null);
 exports.EventsGateway = EventsGateway = __decorate([
-    (0, websockets_1.WebSocketGateway)({ cors: { origin: 'http://localhost:5173' } }),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    (0, websockets_1.WebSocketGateway)({
+        cors: {
+            origin: (origin, callback) => {
+                if (!origin || allowedSocketOrigins.some((o) => origin.startsWith(o))) {
+                    callback(null, true);
+                    return;
+                }
+                callback(null, false);
+            },
+            credentials: true,
+        },
+    }),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        presence_service_1.PresenceService])
 ], EventsGateway);
 //# sourceMappingURL=events.gateway.js.map

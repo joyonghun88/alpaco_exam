@@ -19,21 +19,20 @@ export declare class ExamController {
         questionId: string;
         answer: any;
     }): Promise<{
-        id: string;
-        updatedAt: Date;
-        participantId: string;
-        questionId: string;
-        answerContent: import("@prisma/client/runtime/library").JsonValue;
-        earnedPoint: number | null;
-        gradingStatus: import("@prisma/client").$Enums.GradingStatus;
-        gradedById: string | null;
+        success: boolean;
     } | undefined>;
-    getKvsCredentials(id: string): Promise<{
-        accessKeyId: string | undefined;
-        secretAccessKey: string | undefined;
+    getKvsCredentials(id: string, role?: 'MASTER' | 'VIEWER'): Promise<{
+        accessKeyId: string;
+        secretAccessKey: string;
         sessionToken: string | undefined;
         region: string;
         channelArn: string | undefined;
         channelName: string | undefined;
+        signalingEndpoint: string | null | undefined;
+        iceServers: {
+            urls: string[] | undefined;
+            username: string | undefined;
+            credential: string | undefined;
+        }[];
     }>;
 }

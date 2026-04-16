@@ -27,18 +27,35 @@ let AuthService = class AuthService {
         }
         const now = new Date();
         const room = participant.room;
-        if (room.status === 'READY' && now < room.startAt) {
-            throw new common_1.HttpException({
-                type: 'NOT_STARTED_YET',
-                message: '시험이 아직 시작되지 않았습니다.',
-                startTime: room.startAt,
-                waitingMessage: room.waitingMessage || '시험 시작 시간까지 잠시 기다려 주세요.',
-                waitingTitle: room.waitingTitle || 'AI 평가 샌드박스',
-                iconType: room.iconType || 'Activity',
-                isRequireCamera: room.isRequireCamera,
-                standardTerms: room.standardTerms,
-                cameraTerms: room.cameraTerms
-            }, common_1.HttpStatus.FORBIDDEN);
+        if (participant.status === 'COMPLETED') {
+            throw new common_1.HttpException('이미 시험을 제출하셨습니다. 재입장이 불가능합니다.', common_1.HttpStatus.FORBIDDEN);
+        }
+        if (room.status === 'CLOSED') {
+            throw new common_1.HttpException('이미 종료된 고사장입니다. 입장이 불가능합니다.', common_1.HttpStatus.FORBIDDEN);
+        }
+        if (now > room.endAt) {
+            throw new common_1.HttpException('시험 응시 시간이 종료되었습니다.', common_1.HttpStatus.FORBIDDEN);
+        }
+        if (room.status === 'READY') {
+            if (now < room.startAt) {
+                throw new common_1.HttpException({
+                    type: 'NOT_STARTED_YET',
+                    message: '시험이 아직 시작되지 않았습니다.',
+                    startTime: room.startAt,
+                    waitingMessage: room.waitingMessage || '시험 시작 시간까지 잠시 기다려 주세요.',
+                    waitingTitle: room.waitingTitle || 'AI 평가 샌드박스',
+                    iconType: room.iconType || 'Activity',
+                    isRequireCamera: room.isRequireCamera,
+                    standardTerms: room.standardTerms,
+                    cameraTerms: room.cameraTerms
+                }, common_1.HttpStatus.FORBIDDEN);
+            }
+            else {
+                await this.prisma.examRoom.update({
+                    where: { id: room.id },
+                    data: { status: 'IN_PROGRESS' }
+                });
+            }
         }
         if (participant.status === 'READY') {
             await this.prisma.participant.update({

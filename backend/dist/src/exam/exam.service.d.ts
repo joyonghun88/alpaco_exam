@@ -1,9 +1,11 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { AwsService } from '../aws/aws.service';
+import { RedisService } from '../redis/redis.service';
 export declare class ExamService {
     private prisma;
     private aws;
-    constructor(prisma: PrismaService, aws: AwsService);
+    private redis;
+    constructor(prisma: PrismaService, aws: AwsService, redis: RedisService);
     getQuestions(participantId: string): Promise<{
         id: any;
         type: any;
@@ -12,25 +14,24 @@ export declare class ExamService {
         point: number;
     }[]>;
     saveProgress(participantId: string, questionId: string, answer: any): Promise<{
-        id: string;
-        updatedAt: Date;
-        participantId: string;
-        questionId: string;
-        answerContent: import("@prisma/client/runtime/library").JsonValue;
-        earnedPoint: number | null;
-        gradingStatus: import("@prisma/client").$Enums.GradingStatus;
-        gradedById: string | null;
+        success: boolean;
     } | undefined>;
-    submitAnswers(participantId: string, answers: Record<string, number>): Promise<{
+    submitAnswers(participantId: string, manualAnswers?: Record<string, number>): Promise<{
         success: boolean;
         score: number;
     }>;
-    getKvsCredentials(participantId: string): Promise<{
-        accessKeyId: string | undefined;
-        secretAccessKey: string | undefined;
+    getKvsCredentials(participantId: string, role?: 'MASTER' | 'VIEWER'): Promise<{
+        accessKeyId: string;
+        secretAccessKey: string;
         sessionToken: string | undefined;
         region: string;
         channelArn: string | undefined;
         channelName: string | undefined;
+        signalingEndpoint: string | null | undefined;
+        iceServers: {
+            urls: string[] | undefined;
+            username: string | undefined;
+            credential: string | undefined;
+        }[];
     }>;
 }

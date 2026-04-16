@@ -36,8 +36,9 @@ async function bootstrap() {
       if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {
         callback(null, true);
       } else {
-        callback(null, true); // 알파 기간에는 경고만 기록하고 허용
-        console.warn(`[CORS] Unregistered origin: ${origin}`);
+        console.warn(`[CORS] Blocked unregistered origin: ${origin}`);
+        // Return "not allowed" without throwing to avoid polluting logs with 500s.
+        callback(null, false);
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',

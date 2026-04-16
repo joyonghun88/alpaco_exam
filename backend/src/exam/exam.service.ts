@@ -123,33 +123,69 @@ export class ExamService {
     let totalScore = 0;
     const submissionsData: any[] = [];
 
+    const normalizeText = (value: any) =>
+      String(value ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+
     for (const eq of examQuestions) {
-      const q = eq.question;
+      const q: any = eq.question;
       const userAns = finalAnswers[q.id];
-      let isCorrect = false;
-      
+
+      let earnedPoint = 0;
+      let gradingStatus: GradingStatus = GradingStatus.PENDING;
+
       const storedCorrect = q.correctAnswer;
-      let actualCorrect: any = null;
 
-      if (Array.isArray(storedCorrect)) {
-        actualCorrect = storedCorrect[0];
-      } else if (typeof storedCorrect === 'object' && (storedCorrect as any).answer) {
-        actualCorrect = (storedCorrect as any).answer[0];
+      if (q.type === 'MULTIPLE_CHOICE') {
+        gradingStatus = GradingStatus.AUTO_GRADED;
+
+        const correctList = Array.isArray(storedCorrect)
+          ? storedCorrect.map((v: any) => String(v)).sort()
+          : storedCorrect !== undefined && storedCorrect !== null
+            ? [String(storedCorrect)]
+            : [];
+
+        const userList = Array.isArray(userAns)
+          ? userAns.map((v: any) => String(v)).sort()
+          : userAns !== undefined && userAns !== null
+            ? [String(userAns)]
+            : [];
+
+        const isCorrect = userList.length > 0 && userList.join(',') === correctList.join(',');
+        earnedPoint = isCorrect ? eq.point : 0;
+      } else if (q.type === 'FILL_IN_THE_BLANK') {
+        gradingStatus = GradingStatus.AUTO_GRADED;
+
+        const correctRaw = Array.isArray(storedCorrect)
+          ? storedCorrect
+          : (storedCorrect && typeof storedCorrect === 'object' && (storedCorrect as any).answer)
+            ? (storedCorrect as any).answer
+            : storedCorrect !== undefined && storedCorrect !== null
+              ? [storedCorrect]
+              : [];
+
+        const correctVariants = (correctRaw || []).map(normalizeText).filter(Boolean);
+        const userValue = normalizeText(userAns);
+        const isCorrect = !!userValue && correctVariants.includes(userValue);
+        earnedPoint = isCorrect ? eq.point : 0;
+      } else if (q.type === 'SHORT_ANSWER' || q.type === 'ESSAY') {
+        gradingStatus = GradingStatus.PENDING;
+        earnedPoint = 0;
       } else {
-        actualCorrect = storedCorrect;
+        gradingStatus = GradingStatus.PENDING;
+        earnedPoint = 0;
       }
 
-      if (userAns !== undefined && String(userAns) === String(actualCorrect)) {
-        isCorrect = true;
-        totalScore += eq.point;
-      }
-       
+      if (gradingStatus === GradingStatus.AUTO_GRADED) totalScore += earnedPoint;
+
       submissionsData.push({
         participantId,
         questionId: q.id,
         answerContent: { answer: userAns ?? null },
-        earnedPoint: isCorrect ? eq.point : 0,
-        gradingStatus: GradingStatus.AUTO_GRADED
+        earnedPoint,
+        gradingStatus
       });
     }
 

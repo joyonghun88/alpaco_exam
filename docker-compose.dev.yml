@@ -1,0 +1,16 @@
+version: '3.8'
+
+# Local/dev overrides (keeps production compose more locked down).
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  backend:
+    ports:
+      - "3000:3000"
+
+  frontend:
+    ports:
+      - "8080:80"
+

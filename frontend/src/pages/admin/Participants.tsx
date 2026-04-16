@@ -33,13 +33,14 @@ export default function Participants() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const [showBulkInvite, setShowBulkInvite] = useState(false);
-  const [emailTemplate, setEmailTemplate] = useState(`안녕하세요, {{name}}님.
-평가 [{{room}}]에 초대되셨습니다.
+  const [inviteTargetIds, setInviteTargetIds] = useState<string[] | null>(null);
+  const [emailTemplate, setEmailTemplate] = useState(`?덈뀞?섏꽭?? {{name}}??
+?됯? [{{room}}]??珥덈??섏뀲?듬땲??
 
-- 초대 코드: {{code}}
-- 접속 링크: {{link}}
+- 珥덈? 肄붾뱶: {{code}}
+- ?묒냽 留곹겕: {{link}}
 
-감사합니다.`);
+媛먯궗?⑸땲??`);
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -56,7 +57,8 @@ export default function Participants() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // 선택된 고사장에 따른 필터링
+  // ?좏깮??怨좎궗?μ뿉 ?곕Ⅸ ?꾪꽣留? 
+
   const filteredParticipants = useMemo(() => {
     if (!selectedRoomId) return [];
     return participants.filter(p => p.roomId === selectedRoomId);
@@ -64,7 +66,7 @@ export default function Participants() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    if (!name || !email || !targetRoomId) return alert('정보를 모두 입력하세요.');
+    if (!name || !email || !targetRoomId) return alert('?뺣낫瑜?紐⑤몢 ?낅젰?섏꽭??');
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants`, {
         method: 'POST',
@@ -78,18 +80,18 @@ export default function Participants() {
   };
 
   const handleBulkAdd = async () => {
-    if (!bulkText || !targetRoomId) return alert('데이터와 대상 고사장을 선택하세요.');
+    if (!bulkText || !targetRoomId) return alert('?곗씠?곗? ???怨좎궗?μ쓣 ?좏깮?섏꽭??');
     
     const lines = bulkText.split('\n').map(l => l.trim()).filter(l => l.includes(',') && l.length > 5);
     const ps = lines.map(l => {
       const parts = l.split(',');
       return { 
-        name: parts[0]?.trim() || '이름없음', 
+        name: parts[0]?.trim() || '?대쫫?놁쓬', 
         email: parts[1]?.trim() || 'no-email@example.com' 
       };
-    }).filter(p => p.email.includes('@')); // 최소한 이메일 형식을 갖춘 것만
+    }).filter(p => p.email.includes('@')); // 理쒖냼???대찓???뺤떇??媛뽰텣 寃껊쭔
 
-    if (ps.length === 0) return alert('유효한 데이터가 없습니다. [이름, 이메일] 형식을 확인하세요.');
+    if (ps.length === 0) return alert('?좏슚???곗씠?곌? ?놁뒿?덈떎. [?대쫫, ?대찓?? ?뺤떇???뺤씤?섏꽭??');
 
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants/bulk`, {
@@ -99,18 +101,18 @@ export default function Participants() {
       });
       if (res.ok) {
         setBulkText(''); setShowBulk(false); fetchData();
-        alert(`${ps.length}명이 등록되었습니다.`);
+        alert(`${ps.length}紐낆씠 ?깅줉?섏뿀?듬땲??`);
       } else {
         const err = await res.json();
-        alert(`등록 실패: ${err.message || '서버 오류'}`);
+        alert(`?깅줉 ?ㅽ뙣: ${err.message || '?쒕쾭 ?ㅻ쪟'}`);
       }
     } catch {
-      alert('서버와 응답할 수 없습니다.');
+      alert('?쒕쾭? ?묐떟?????놁뒿?덈떎.');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return;
+    if (!confirm('?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants/${id}`, { 
         method: 'DELETE',
@@ -132,10 +134,10 @@ export default function Participants() {
 
   const handleDownloadTemplate = () => {
     const csvContent = 
-      "이름,이메일\n" +
-      "홍길동,hong@example.com\n" +
-      "김알파,kim@alpaco.io\n" +
-      "박디지털,park@dx.com";
+      "?대쫫,?대찓??n" +
+      "?띻만??hong@example.com\n" +
+      "源?뚰뙆,kim@alpaco.io\n" +
+      "諛뺣뵒吏??park@dx.com";
     
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -155,34 +157,37 @@ export default function Participants() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleInvite = async (id: string) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/admin/participants/${id}/invite`, { 
-        method: 'POST',
-        headers: authHeader
-      });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message);
-      }
-    } catch {
-      alert('초대 전송 중 오류가 발생했습니다.');
-    }
+  const handleInvite = (id: string) => {
+    setInviteTargetIds([id]);
+    setShowBulkInvite(true);
   };
 
   const handleBulkInvite = async () => {
     if (!selectedRoomId) return;
-    if (!confirm(`${filteredParticipants.length}명에게 일괄 발송하시겠습니까?`)) return;
+
+    const targetIds = inviteTargetIds ?? filteredParticipants.map(p => p.id);
+    if (targetIds.length === 0) return;
+
+    const confirmText = inviteTargetIds
+      ? `${targetIds.length}명에게 초대코드를 발송하시겠습니까?`
+      : `${targetIds.length}명에게 일괄 발송하시겠습니까?`;
+
+    if (!confirm(confirmText)) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/rooms/${selectedRoomId}/invite-bulk`, {
+      const res = await fetch(`${API_BASE_URL}/admin/participants/invite-bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader },
-        body: JSON.stringify({ template: emailTemplate })
+        body: JSON.stringify({ participantIds: targetIds, template: emailTemplate })
       });
+
       if (res.ok) {
-        alert('일괄 발송이 완료되었습니다.');
+        alert(inviteTargetIds ? '발송이 완료되었습니다.' : '일괄 발송이 완료되었습니다.');
         setShowBulkInvite(false);
+        setInviteTargetIds(null);
+      } else {
+        const err = await res.json().catch(() => ({} as any));
+        alert(`발송 실패: ${err.message || res.status}`);
       }
     } catch {
       alert('발송 중 오류가 발생했습니다.');
@@ -191,31 +196,30 @@ export default function Participants() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-32">
-      {/* 헤더 */}
+      {/* ?ㅻ뜑 */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-button-outline pb-8">
         <div className="animate-in fade-in duration-700">
           <div className="flex items-center space-x-2 text-primary font-black text-sm uppercase tracking-widest mb-2">
              <Building2 size={16} /> <span>Room Allocation Management</span>
           </div>
           <h1 className="text-4xl font-black text-text-title tracking-tight flex items-center">
-             수험생 배정 관리
-             {selectedRoomId && (
+             ?섑뿕??諛곗젙 愿由?             {selectedRoomId && (
                <span className="flex items-center text-primary-strong ml-4">
                  <ChevronRight className="mx-2 text-atomic-gray-200" /> {rooms.find(r=>r.id === selectedRoomId)?.roomName}
                </span>
              )}
           </h1>
-          <p className="text-text-caption mt-2 font-medium">고사장별로 수험번호를 발급하고 명단을 관리합니다.</p>
+          <p className="text-text-caption mt-2 font-medium">怨좎궗?λ퀎濡??섑뿕踰덊샇瑜?諛쒓툒?섍퀬 紐낅떒??愿由ы빀?덈떎.</p>
         </div>
         <div className="flex space-x-3">
            {selectedRoomId && (
              <div className="flex space-x-2">
                <button 
-                 onClick={() => setShowBulkInvite(true)}
+                 onClick={() => { setInviteTargetIds(null); setShowBulkInvite(true); }}
                  className="px-6 py-4 bg-primary/10 text-primary border border-primary/20 rounded-2xl font-black flex items-center space-x-2 hover:bg-primary hover:text-white transition-all shadow-sm"
                >
                   <Send size={20} />
-                  <span>일괄 초대 발급</span>
+                  <span>?쇨큵 珥덈? 諛쒓툒</span>
                </button>
                <button 
                  onClick={() => {
@@ -225,7 +229,7 @@ export default function Participants() {
                  className="px-6 py-4 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-2xl font-black flex items-center space-x-2 hover:bg-emerald-100 transition-all shadow-sm"
                >
                   <FileSpreadsheet size={20} />
-                  <span>엑셀 대량 배정</span>
+                  <span>?묒? ???諛곗젙</span>
                </button>
              </div>
            )}
@@ -236,10 +240,10 @@ export default function Participants() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-        {/* 사이드바: 고사장 선택 리스트 */}
+        {/* ?ъ씠?쒕컮: 怨좎궗???좏깮 由ъ뒪??*/}
         <div className="xl:col-span-4">
            <div className="space-y-4">
-              <h2 className="text-sm font-black text-text-caption uppercase tracking-widest pl-2 mb-4">고사장별 배정 현황</h2>
+              <h2 className="text-sm font-black text-text-caption uppercase tracking-widest pl-2 mb-4">怨좎궗?λ퀎 諛곗젙 ?꾪솴</h2>
               {rooms.map(room => (
                 <button 
                   key={room.id}
@@ -255,7 +259,7 @@ export default function Participants() {
                      <div className="mt-8 flex items-center justify-between">
                         <div className={`flex items-center space-x-2 text-sm font-black ${selectedRoomId === room.id ? 'text-white' : 'text-primary'}`}>
                            <Users size={16} />
-                           <span>{room._count.participants}명 배정됨</span>
+                           <span>{room._count.participants}紐?諛곗젙</span>
                         </div>
                         {selectedRoomId === room.id && <Check className="text-white animate-in zoom-in" />}
                      </div>
@@ -264,53 +268,53 @@ export default function Participants() {
               ))}
               {rooms.length === 0 && (
                 <div className="p-10 text-center bg-bg-section rounded-[2rem] border-2 border-dashed border-button-outline text-text-caption font-bold">
-                   등록된 고사장이 없습니다.
+                   ?깅줉??怨좎궗?μ씠 ?놁뒿?덈떎.
                 </div>
               )}
            </div>
         </div>
 
-        {/* 메인 영역: 수험생 상세 명단 + 추가 폼 */}
+        {/* 硫붿씤 ?곸뿭: ?섑뿕???곸꽭 紐낅떒 + 異붽? ??*/}
         <div className="xl:col-span-8 space-y-8">
            {!selectedRoomId ? (
               <div className="h-full min-h-[500px] flex flex-col items-center justify-center bg-bg-section/30 rounded-[3rem] border-2 border-dashed border-button-outline animate-in fade-in duration-500">
                  <Building2 size={64} className="text-atomic-gray-200 mb-6" />
-                 <h3 className="text-xl font-black text-text-caption">좌측에서 관리할 고사장을 선택하세요.</h3>
-                 <p className="text-text-caption font-medium mt-2">고사장별로 수험번호를 별도로 관리할 수 있습니다.</p>
+                 <h3 className="text-xl font-black text-text-caption">醫뚯륫?먯꽌 愿由ы븷 怨좎궗?μ쓣 ?좏깮?섏꽭??</h3>
+                 <p className="text-text-caption font-medium mt-2">怨좎궗?λ퀎濡??섑뿕踰덊샇瑜?蹂꾨룄濡?愿由ы븷 ???덉뒿?덈떎.</p>
               </div>
            ) : (
              <div className="space-y-8 animate-in slide-in-from-right-10 duration-500">
-                {/* 수험생 추가 폼 (해당 고사장 전용) */}
+                {/* ?섑뿕??異붽? ??(?대떦 怨좎궗???꾩슜) */}
                 <div className="bg-bg-default border border-button-outline rounded-[2.5rem] p-10 shadow-lg relative overflow-hidden">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[4rem] flex items-center justify-center">
                       <Plus className="text-primary/30" size={40} />
                    </div>
                    <h2 className="text-2xl font-black text-text-title mb-8 flex items-center space-x-2">
-                       <span>{rooms.find(r=>r.id === selectedRoomId)?.roomName} 신규 배정</span>
+                       <span>{rooms.find(r=>r.id === selectedRoomId)?.roomName} ?좉퇋 諛곗젙</span>
                    </h2>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <input value={name} onChange={e=>setName(e.target.value)} placeholder="수험생 이름" className="w-full bg-bg-section border-2 border-button-outline p-5 rounded-2xl text-lg font-bold outline-none focus:border-primary transition" />
-                      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="이메일 (ID)" className="w-full bg-bg-section border-2 border-button-outline p-5 rounded-2xl text-lg font-bold outline-none focus:border-primary transition" />
+                      <input value={name} onChange={e=>setName(e.target.value)} placeholder="?섑뿕???대쫫" className="w-full bg-bg-section border-2 border-button-outline p-5 rounded-2xl text-lg font-bold outline-none focus:border-primary transition" />
+                      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="?대찓??(ID)" className="w-full bg-bg-section border-2 border-button-outline p-5 rounded-2xl text-lg font-bold outline-none focus:border-primary transition" />
                    </div>
                    <button onClick={() => { setTargetRoomId(selectedRoomId); handleAdd({ preventDefault: ()=>{} } as any); }} className="w-full bg-primary hover:bg-primary-strong text-white font-black py-5 rounded-2xl shadow-xl transition-all active:scale-95 text-lg">
-                      수험생 명단에 추가하기
+                      ?섑뿕??紐낅떒??異붽??섍린
                    </button>
                    <div className="mt-4 text-center">
                       <button 
                         onClick={() => { setTargetRoomId(selectedRoomId); setShowBulk(true); }}
                         className="text-xs font-black text-text-caption hover:text-primary transition-colors flex items-center justify-center space-x-1 mx-auto"
                       >
-                         <FileSpreadsheet size={14} /> <span>또는 엑셀 데이터로 대량 배정하기</span>
+                         <FileSpreadsheet size={14} /> <span>?먮뒗 ?묒? ?곗씠?곕줈 ???諛곗젙?섍린</span>
                       </button>
                    </div>
                 </div>
 
-                {/* 상세 명단 리스트 */}
+                {/* ?곸꽭 紐낅떒 由ъ뒪??*/}
                 <div className="space-y-4">
                    <div className="flex justify-between items-center px-4">
                       <h2 className="font-black text-text-title flex items-center space-x-2">
                          <LayoutList size={18} className="text-primary" />
-                         <span>발급된 수험표 리스트</span>
+                         <span>諛쒓툒???섑뿕??由ъ뒪</span>
                       </h2>
                       <span className="text-xs font-black text-text-caption uppercase">{filteredParticipants.length} Participants</span>
                    </div>
@@ -329,7 +333,7 @@ export default function Participants() {
                             <button 
                               onClick={() => handleInvite(person.id)}
                               className="p-4 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-2xl transition-all shadow-sm flex items-center space-x-2 group-hover:scale-105"
-                              title="초대 이메일 발송"
+                              title="珥덈? ?대찓??諛쒖넚"
                             >
                                <Send size={18} />
                             </button>
@@ -352,18 +356,18 @@ export default function Participants() {
         </div>
       </div>
 
-      {/* 대량 등록 모달 (오버레이) */}
+      {/* ????깅줉 紐⑤떖 (?ㅻ쾭?덉씠) */}
       {showBulk && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 pb-20 overflow-auto">
            <div className="bg-bg-default w-full max-w-4xl border-2 border-primary/20 rounded-[4rem] p-12 shadow-[0_0_100px_rgba(0,0,0,0.2)] animate-in zoom-in-95 relative">
               <button onClick={()=>setShowBulk(false)} className="absolute top-10 right-10 p-4 hover:bg-bg-section rounded-3xl transition"><X size={32} /></button>
-              <h2 className="text-4xl font-black mb-4 tracking-tighter">엑셀 데이터 일괄 배정</h2>
-              <p className="text-text-caption mb-10 font-bold">대상 고사장을 선택하고 CSV 데이터를 붙여넣으세요.</p>
+              <h2 className="text-4xl font-black mb-4 tracking-tighter">?묒? ?곗씠???쇨큵 諛곗젙</h2>
+              <p className="text-text-caption mb-10 font-bold">???怨좎궗?μ쓣 ?좏깮?섍퀬 CSV ?곗씠?곕? 遺숈뿬?ｌ쑝?몄슂.</p>
               
               <div className="space-y-8">
                   {!selectedRoomId ? (
                     <div>
-                       <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 mb-4 block">1. 대상 고사장 선택</label>
+                       <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 mb-4 block">1. ???怨좎궗???좏깮</label>
                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                           {rooms.map(r => (
                             <button key={r.id} onClick={()=>setTargetRoomId(r.id)} className={`p-4 rounded-2xl border-2 font-black text-xs transition-all ${targetRoomId === r.id ? 'bg-primary border-primary text-white' : 'bg-bg-section border-button-outline text-text-caption hover:border-primary/50'}`}>
@@ -376,67 +380,67 @@ export default function Participants() {
                     <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10">
                        <p className="text-sm font-black text-primary flex items-center">
                           <Check size={18} className="mr-2" /> 
-                          {rooms.find(r=>r.id === selectedRoomId)?.roomName} (으)로 자동 배정됩니다.
+                          {rooms.find(r=>r.id === selectedRoomId)?.roomName} (??濡??먮룞 諛곗젙?⑸땲??
                        </p>
                     </div>
                   )}
                   <div>
                      <div className="flex justify-between items-end mb-4">
-                        <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 block">{selectedRoomId ? '1. 수험생 명단 파싱 (CSV)' : '2. 수험생 명단 파싱 (CSV)'}</label>
+                        <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 block">{selectedRoomId ? '1. ?섑뿕??紐낅떒 ?뚯떛 (CSV)' : '2. ?섑뿕??紐낅떒 ?뚯떛 (CSV)'}</label>
                         <button 
                           onClick={() => participantFileInputRef.current?.click()}
                           className="flex items-center space-x-2 text-xs font-black text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl hover:bg-emerald-100 transition shadow-sm"
                         >
-                           <UploadCloud size={14} /> <span>CSV 파일 불러오기</span>
+                           <UploadCloud size={14} /> <span>CSV ?뚯씪 遺덈윭?ㅺ린</span>
                         </button>
                         <input type="file" ref={participantFileInputRef} onChange={handleFileUpload} accept=".csv,.txt" className="hidden" />
                      </div>
-                     <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)} className="w-full h-64 bg-bg-section border-2 border-button-outline rounded-[2.5rem] p-8 font-mono text-sm focus:border-primary outline-none shadow-inner" placeholder="이름, 이메일 (예: 홍길동, hong@example.com)" />
+                     <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)} className="w-full h-64 bg-bg-section border-2 border-button-outline rounded-[2.5rem] p-8 font-mono text-sm focus:border-primary outline-none shadow-inner" placeholder="?대쫫, ?대찓??(?? ?띻만?? hong@example.com)" />
                     <button onClick={handleDownloadTemplate} className="mt-4 flex items-center space-x-2 text-xs font-black text-primary hover:underline">
-                       <Download size={14} /> <span>대량 배정용 샘플 양식 다운로드</span>
+                       <Download size={14} /> <span>???諛곗젙???섑뵆 ?묒떇 ?ㅼ슫濡쒕뱶</span>
                     </button>
                  </div>
-                 <button onClick={handleBulkAdd} className="w-full bg-emerald-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-emerald-700 transition active:scale-95">대량 발급 및 배정 실행</button>
+                 <button onClick={handleBulkAdd} className="w-full bg-emerald-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-emerald-700 transition active:scale-95">???諛쒓툒 諛?諛곗젙 ?ㅽ뻾</button>
               </div>
            </div>
         </div>
       )}
-      {/* 일괄 초대 발송 모달 */}
+      {/* ?쇨큵 珥덈? 諛쒖넚 紐⑤떖 */}
       {showBulkInvite && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 pb-20 overflow-auto">
            <div className="bg-bg-default w-full max-w-3xl border-2 border-primary/20 rounded-[4rem] p-12 shadow-2xl animate-in zoom-in-95 relative">
               <button onClick={()=>setShowBulkInvite(false)} className="absolute top-10 right-10 p-4 hover:bg-bg-section rounded-3xl transition"><X size={32} /></button>
-              <h2 className="text-4xl font-black mb-4 tracking-tighter">일괄 초대 메시지 편집</h2>
+              <h2 className="text-4xl font-black mb-4 tracking-tighter">?쇨큵 珥덈? 硫붿떆吏 ?몄쭛</h2>
               <p className="text-text-caption mb-10 font-bold">
-                고사장 내 모든 수험생({filteredParticipants.length}명)에게 보낼 메시지를 작성하세요.
+                怨좎궗????紐⑤뱺 ?섑뿕??{filteredParticipants.length}紐??먭쾶 蹂대궪 硫붿떆吏瑜??묒꽦?섏꽭??
               </p>
 
               <div className="space-y-6">
                  <div>
-                   <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 mb-2 block">메시지 템플릿</label>
+                   <label className="text-[11px] font-black text-text-caption uppercase tracking-widest pl-2 mb-2 block">硫붿떆吏 ?쒗뵆由?</label>
                    <textarea 
                      value={emailTemplate} 
                      onChange={e=>setEmailTemplate(e.target.value)}
                      className="w-full h-80 bg-bg-section border-2 border-button-outline rounded-[2.5rem] p-8 font-medium text-lg focus:border-primary outline-none shadow-inner leading-relaxed"
-                     placeholder="메시지 내용을 입력하세요."
+                     placeholder="硫붿떆吏 ?댁슜???낅젰?섏꽭??"
                    />
                  </div>
                  
                  <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-primary/5 rounded-2xl text-[11px] font-bold text-primary">
-                       사용 가능 치환자:<br/>
-                       {`{{name}}`}: 수험생 이름<br/>
-                       {`{{room}}`}: 고사장 명칭
+                       ?ъ슜 媛??移섑솚??<br/>
+                       {`{{name}}`}: ?섑뿕???대쫫<br/>
+                       {`{{room}}`}: 怨좎궗??紐낆묶
                     </div>
                     <div className="p-4 bg-primary/5 rounded-2xl text-[11px] font-bold text-primary">
-                       사용 가능 치환자:<br/>
-                       {`{{code}}`}: 초대 코드<br/>
-                       {`{{link}}`}: 접속 URL
+                       ?ъ슜 媛??移섑솚??<br/>
+                       {`{{code}}`}: 珥덈? 肄붾뱶<br/>
+                       {`{{link}}`}: ?묒냽 URL
                     </div>
                  </div>
 
                  <button onClick={handleBulkInvite} className="w-full bg-primary text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-primary-strong transition active:scale-95">
-                    {filteredParticipants.length}명에게 일괄 전송 시작
+                    {filteredParticipants.length}紐낆뿉寃??쇨큵 ?꾩넚 ?쒖옉
                  </button>
               </div>
            </div>

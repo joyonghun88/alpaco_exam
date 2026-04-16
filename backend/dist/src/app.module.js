@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const throttler_1 = require("@nestjs/throttler");
+const schedule_1 = require("@nestjs/schedule");
 const core_1 = require("@nestjs/core");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
@@ -18,12 +19,16 @@ const admin_module_1 = require("./admin/admin.module");
 const events_module_1 = require("./events/events.module");
 const exam_module_1 = require("./exam/exam.module");
 const aws_module_1 = require("./aws/aws.module");
+const redis_module_1 = require("./redis/redis.module");
+const email_module_1 = require("./email/email.module");
+const presence_module_1 = require("./presence/presence.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            schedule_1.ScheduleModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot([{
                     ttl: 60000,
                     limit: 100,
@@ -33,7 +38,10 @@ exports.AppModule = AppModule = __decorate([
             admin_module_1.AdminModule,
             events_module_1.EventsModule,
             exam_module_1.ExamModule,
-            aws_module_1.AwsModule
+            aws_module_1.AwsModule,
+            redis_module_1.RedisModule,
+            email_module_1.EmailModule,
+            presence_module_1.PresenceModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [

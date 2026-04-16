@@ -11,6 +11,9 @@ interface Question {
 }
 
 const DEFAULT_CATEGORIES = ['CS 기초', 'Frontend', 'Backend', 'DevOps', 'AI/Data', '기타 실무'];
+const CATEGORY_STORAGE_KEY = 'admin_question_bank_categories_v1';
+const DEFAULT_CATEGORY_SUGGESTIONS = ['CS 기초', 'Frontend', 'Backend', 'DevOps'];
+
 const QUESTION_TYPES = [
   { value: 'MULTIPLE_CHOICE', label: '객관식', icon: <ListChecks size={18} /> },
   { value: 'SHORT_ANSWER', label: '단답형 주관식', icon: <Type size={18} /> },
@@ -26,10 +29,15 @@ export default function QuestionBank() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [addedCategories, setAddedCategories] = useState<string[]>([]);
+  const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [moveTargetCategory, setMoveTargetCategory] = useState<string>('');
+  const [movingQuestions, setMovingQuestions] = useState(false);
   
   const [editorForm, setEditorForm] = useState({
     id: null as string | null,
-    category: DEFAULT_CATEGORIES[0], 
+    category: DEFAULT_CATEGORY_SUGGESTIONS[0], 
     type: 'MULTIPLE_CHOICE', 
     title: '',
     passage: '',
@@ -50,11 +58,68 @@ export default function QuestionBank() {
     } catch {}
   };
 
-  useEffect(() => { fetchQuestions(); }, []);
+  const handleDeleteCategory = async (cat: string) => {
+    const count = questions.filter((q) => q.category === cat).length;
+    if (count === 0) {
+      setAddedCategories((prev) => {
+        const next = prev.filter((c) => c !== cat);
+        localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+
+    if (false && DEFAULT_CATEGORIES.includes(cat)) {
+      alert('기본 카테고리는 삭제할 수 없습니다.');
+      return;
+    }
+
+    if (!confirm(`'${cat}' 카테고리의 문제를 모두 삭제할까요?`)) return;
+
+    setDeletingCategory(cat);
+    try {
+      const url = `${API_BASE_URL}/admin/questions/pool/category?name=${encodeURIComponent(cat)}`;
+      const res = await fetch(url, { method: 'DELETE', headers: authHeader });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        alert(data.message || '카테고리 삭제에 실패했습니다.');
+        return;
+      }
+
+      setAddedCategories((prev) => {
+        const next = prev.filter((c) => c !== cat);
+        localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+      if (selectedCategory === cat) {
+        setSelectedCategory(null);
+        setSelectedType('ALL');
+        setView('CATEGORIES');
+      }
+
+      await fetchQuestions();
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+    } finally {
+      setDeletingCategory(null);
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CATEGORY_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setAddedCategories(parsed.map((v) => String(v)));
+      }
+    } catch {}
+    fetchQuestions();
+  }, []);
 
   const categories = useMemo(() => {
     const existing = Array.from(new Set(questions.map(q => q.category)));
-    return Array.from(new Set([...DEFAULT_CATEGORIES, ...existing, ...addedCategories]));
+    return Array.from(new Set([...existing, ...addedCategories]));
   }, [questions, addedCategories]);
 
   const stats = useMemo(() => {
@@ -73,6 +138,61 @@ export default function QuestionBank() {
     });
   }, [questions, selectedCategory, selectedType]);
 
+  useEffect(() => {
+    setSelectedQuestionIds([]);
+    setMoveTargetCategory('');
+  }, [selectedCategory, selectedType]);
+
+  const handleMoveSelected = async () => {
+    if (!selectedCategory) return;
+    if (selectedQuestionIds.length === 0) {
+      alert('이동할 문항을 선택하세요.');
+      return;
+    }
+
+    const target = moveTargetCategory.trim();
+    if (!target) {
+      alert('이동할 카테고리를 선택하세요.');
+      return;
+    }
+    if (target === selectedCategory) {
+      alert('현재 카테고리로는 이동할 수 없습니다.');
+      return;
+    }
+
+    if (!confirm(`선택한 ${selectedQuestionIds.length}개 문항을 '${target}' 카테고리로 이동할까요?`)) return;
+
+    setMovingQuestions(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/questions/pool/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ questionIds: selectedQuestionIds, targetCategory: target }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        alert(data.message || '문항 이동에 실패했습니다.');
+        return;
+      }
+
+      setAddedCategories((prev) => {
+        const set = new Set(prev);
+        if (!categories.includes(target)) set.add(target);
+        const next = Array.from(set);
+        localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+
+      setSelectedQuestionIds([]);
+      await fetchQuestions();
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+    } finally {
+      setMovingQuestions(false);
+    }
+  };
+
   const handleSaveQuestion = async () => {
     let finalContent: any = { 
       title: editorForm.title,
@@ -87,6 +207,8 @@ export default function QuestionBank() {
       finalCorrectAnswer = editorForm.options; 
     } else if (editorForm.type === 'SHORT_ANSWER') {
       finalCorrectAnswer = editorForm.correctAnswer[0] || '';
+    } else if (editorForm.type === 'ESSAY') {
+      finalCorrectAnswer = null;
     }
 
     try {
@@ -120,7 +242,7 @@ export default function QuestionBank() {
     setEditorForm({ 
       id: null, passage: '', title: '', imageUrl: '', isMdEnabled: true,
       options: ['옵션 1', '옵션 2', '옵션 3', '옵션 4'], 
-      category: selectedCategory || DEFAULT_CATEGORIES[0], 
+      category: selectedCategory || DEFAULT_CATEGORY_SUGGESTIONS[0], 
       type: 'MULTIPLE_CHOICE', 
       correctAnswer: [],
       parentId: null
@@ -236,6 +358,17 @@ export default function QuestionBank() {
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
              {categories.map(cat => (
                <div key={cat} className="group relative">
+                 {((stats[cat] || 0) > 0 || addedCategories.includes(cat)) && (
+                   <button
+                     type="button"
+                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteCategory(cat); }}
+                     disabled={deletingCategory === cat}
+                     title="카테고리 삭제"
+                     className="absolute top-6 right-6 z-10 p-3 rounded-2xl bg-white/90 border border-button-outline hover:bg-red-50 hover:border-red-200 transition disabled:opacity-50"
+                   >
+                     <Trash2 size={18} className="text-red-600" />
+                   </button>
+                 )}
                  <button onClick={() => { setSelectedCategory(cat); setView('LIST'); }} className="w-full bg-bg-default border border-button-outline rounded-[3rem] p-12 text-left hover:shadow-2xl hover:-translate-y-3 transition-all relative overflow-hidden h-full">
                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/5 rounded-full" />
                    <LayoutGrid className="text-primary mb-8" size={48} />
@@ -244,7 +377,15 @@ export default function QuestionBank() {
                  </button>
                </div>
              ))}
-             <button onClick={() => { const n = prompt('새 카테고리:'); if(n) setAddedCategories([...addedCategories, n]); }} className="border-2 border-dashed border-button-outline rounded-[3rem] p-12 text-center hover:border-primary transition-all flex flex-col items-center justify-center space-y-4 hover:bg-white text-text-caption hover:text-primary min-h-[300px]">
+             <button onClick={() => {
+               const n = prompt('새 카테고리:');
+               if (!n) return;
+               setAddedCategories((prev) => {
+                 const next = Array.from(new Set([...prev, n]));
+                 localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+                 return next;
+               });
+             }} className="border-2 border-dashed border-button-outline rounded-[3rem] p-12 text-center hover:border-primary transition-all flex flex-col items-center justify-center space-y-4 hover:bg-white text-text-caption hover:text-primary min-h-[300px]">
                 <Plus size={48} />
                 <span className="text-xl font-black">카테고리 추가</span>
              </button>
@@ -255,6 +396,54 @@ export default function QuestionBank() {
            <div className="space-y-6">
               <div className="flex justify-between items-center">
                  <button onClick={() => setView('CATEGORIES')} className="flex items-center space-x-2 text-sm font-black text-text-caption px-4 py-2 hover:bg-bg-section rounded-xl transition"><ChevronLeft size={18} /> <span>목록으로</span></button>
+                 <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2 bg-white border border-button-outline rounded-2xl px-4 py-2 shadow-sm">
+                       <input
+                         type="checkbox"
+                         checked={filteredQuestions.length > 0 && selectedQuestionIds.length === filteredQuestions.length}
+                         onChange={(e) => {
+                           if (e.target.checked) setSelectedQuestionIds(filteredQuestions.map((q) => q.id));
+                           else setSelectedQuestionIds([]);
+                         }}
+                       />
+                       <span className="text-xs font-black text-text-caption">선택 {selectedQuestionIds.length}</span>
+                    </div>
+
+                    <select
+                      value={moveTargetCategory}
+                      onChange={(e) => setMoveTargetCategory(e.target.value)}
+                      className="bg-white border border-button-outline rounded-2xl px-4 py-2 text-xs font-black outline-none"
+                    >
+                      <option value="">이동할 카테고리</option>
+                      {categories
+                        .filter((c) => c !== selectedCategory)
+                        .map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const n = prompt('이동할 새 카테고리 이름:');
+                        if (!n) return;
+                        setMoveTargetCategory(n);
+                        setAddedCategories((prev) => {
+                          const next = Array.from(new Set([...prev, n]));
+                          localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(next));
+                          return next;
+                        });
+                      }}
+                      className="px-4 py-2 bg-bg-section border border-button-outline rounded-2xl text-xs font-black hover:bg-white transition"
+                    >
+                      + 새 카테고리
+                    </button>
+                    <button
+                      onClick={handleMoveSelected}
+                      disabled={movingQuestions || selectedQuestionIds.length === 0 || !moveTargetCategory}
+                      className="px-5 py-2 bg-primary text-white rounded-2xl text-xs font-black disabled:opacity-40"
+                    >
+                      이동
+                    </button>
+                 </div>
                  <div className="flex items-center bg-bg-section p-1.5 rounded-2xl border border-button-outline">
                     <button onClick={() => setSelectedType('ALL')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${selectedType === 'ALL' ? 'bg-primary text-white' : 'text-text-caption hover:text-text-title'}`}>전체</button>
                     {QUESTION_TYPES.map(t => (
@@ -265,6 +454,18 @@ export default function QuestionBank() {
               <div className="grid grid-cols-1 gap-4">
                  {filteredQuestions.map(q => (
                    <div key={q.id} className="bg-bg-default border border-button-outline rounded-[2.5rem] p-8 hover:shadow-xl transition-all group flex justify-between items-center relative overflow-hidden">
+                      <div className="mr-4 flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestionIds.includes(q.id)}
+                          onChange={(e) => {
+                            setSelectedQuestionIds((prev) => {
+                              if (e.target.checked) return Array.from(new Set([...prev, q.id]));
+                              return prev.filter((id) => id !== q.id);
+                            });
+                          }}
+                        />
+                      </div>
                       <div className="flex-1 pr-12">
                          <div className="flex items-center space-x-2 mb-2">
                             <span className="text-[10px] font-black px-2 py-0.5 rounded border bg-bg-section border-button-outline text-text-caption">{QUESTION_TYPES.find(t=>t.value === q.type)?.label}</span>
@@ -400,7 +601,11 @@ export default function QuestionBank() {
                             <button onClick={addOption} className="bg-primary text-white px-4 py-2 rounded-xl font-black text-xs hover:bg-primary-strong transition shadow-md flex items-center space-x-1"><PlusCircle size={14} /> <span>추가</span></button>
                           )}
                        </div>
-                       {editorForm.type === 'MULTIPLE_CHOICE' ? (
+                       {editorForm.type === 'ESSAY' ? (
+                          <div className="bg-bg-section p-6 rounded-2xl border-2 border-button-outline border-dashed text-text-caption font-bold italic">
+                             서술형은 자동 채점/정답 설정이 없으며, 평가 종료 후 관리자 채점으로 점수를 확정합니다.
+                          </div>
+                       ) : editorForm.type === 'MULTIPLE_CHOICE' ? (
                           <div className="space-y-3">
                              {editorForm.options.map((opt, idx) => {
                                const isSelect = editorForm.correctAnswer.includes(String(idx));

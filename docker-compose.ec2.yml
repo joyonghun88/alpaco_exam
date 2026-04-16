@@ -1,7 +1,10 @@
 version: '3.8'
 
+# EC2/production compose:
+# - Only frontend is published on the host (80). Backend/Postgres stay private in the Docker network.
+# - Adds conservative json-file log limits.
+# - Adds container memory limits (still consider host-level monitoring).
 services:
-  # Database
   postgres:
     image: postgres:16-alpine
     container_name: alpaco_postgres
@@ -20,7 +23,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # Backend API Server
   backend:
     build:
       context: ./backend
@@ -34,6 +36,8 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    env_file:
+      - aws.env
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_HOST=redis
@@ -46,7 +50,6 @@ services:
       - redis
       - postgres
 
-  # Frontend Web App
   frontend:
     build:
       context: ./frontend
@@ -65,13 +68,9 @@ services:
     depends_on:
       - backend
 
-  # Redis for Socket.io & Cache
   redis:
     image: redis:7-alpine
     container_name: alpaco_redis
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
-    volumes:
-      - redis_data:/data
     restart: unless-stopped
     mem_limit: 128m
     mem_reservation: 64m
@@ -80,7 +79,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
 
 volumes:
   redis_data:
   postgres_data:
+

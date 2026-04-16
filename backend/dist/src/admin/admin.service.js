@@ -13,12 +13,33 @@ exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const aws_service_1 = require("../aws/aws.service");
+const email_service_1 = require("../email/email.service");
+const presence_service_1 = require("../presence/presence.service");
 let AdminService = class AdminService {
     prisma;
     aws;
-    constructor(prisma, aws) {
+    email;
+    presence;
+    constructor(prisma, aws, email, presence) {
         this.prisma = prisma;
         this.aws = aws;
+        this.email = email;
+        this.presence = presence;
+    }
+    escapeHtml(value) {
+        return (value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    toSimpleHtmlFromText(text) {
+        const safe = this.escapeHtml(text);
+        return `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; white-space: pre-line; line-height: 1.5;">${safe}</div>`;
+    }
+    getFrontendUrl() {
+        return process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
     }
     async logAdminAction(adminId, action, targetId, details, ip) {
         return this.prisma.adminLog.create({
@@ -45,6 +66,7 @@ let AdminService = class AdminService {
             },
             orderBy: { startedAt: 'desc' },
         });
+        const onlineMap = await this.presence.getOnlineMap(participants.map((p) => p.id));
         const results = await Promise.all(participants.map(async (p) => {
             const totalScore = p.submissions.reduce((sum, s) => sum + (s.earnedPoint || 0), 0);
             const questionResults = p.room.exam.questions.map(eq => {
@@ -72,6 +94,7 @@ let AdminService = class AdminService {
                 email: p.email,
                 roomName: p.room.roomName,
                 status: p.status,
+                isOnline: onlineMap[p.id] ?? false,
                 startedAt: p.startedAt,
                 violationCount: p._count.securityLogs,
                 inviteCode: p.invitationCode,
@@ -179,16 +202,16 @@ let AdminService = class AdminService {
                 endAt: endDate,
                 status: 'READY',
                 isRequireCamera,
-                waitingMessage: '시험 시작 전입니다. 잠시만 대기해 주세요.',
-                standardTerms: standardTerms || '시험 본인 확인 및 부정행위 방지를 위해 성명, 이메일 정보를 수집합니다.',
-                cameraTerms: cameraTerms || '실시간 감독을 위해 시험 중 수험생의 안면 및 주변 환경 영상을 수집 및 저장합니다.'
+                waitingMessage: '?占쏀뿕 ?占쎌옉 ?占쎌엯?占쎈떎. ?占쎌떆占??占쎄린??二쇱꽭??',
+                standardTerms: standardTerms || '?占쏀뿕 蹂몄씤 ?占쎌씤 占?遺?占쏀뻾??諛⑼옙?占??占쏀빐 ?占쎈챸, ?占쎈찓???占쎈낫占??占쎌쭛?占쎈땲??',
+                cameraTerms: cameraTerms || '?占쎌떆占?媛먮룆???占쏀빐 ?占쏀뿕 占??占쏀뿕?占쎌쓽 ?占쎈㈃ 占?二쇽옙? ?占쎄꼍 ?占쎌긽???占쎌쭛 占??占?占쏀빀?占쎈떎.'
             }
         });
     }
     async deleteRoom(adminId, id) {
         const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
         if (admin?.role !== 'SUPER_ADMIN')
-            throw new Error("방 삭제 권한이 없습니다.");
+            throw new Error("占???占쏙옙 沅뚰븳???占쎌뒿?占쎈떎.");
         await this.logAdminAction(adminId, 'ROOM_DELETE', id);
         return this.prisma.examRoom.delete({ where: { id } });
     }
@@ -212,7 +235,7 @@ let AdminService = class AdminService {
             room = await this.prisma.examRoom.findFirst();
         }
         if (!room)
-            throw new Error("시험장이 없습니다.");
+            throw new Error("?占쏀뿕?占쎌씠 ?占쎌뒿?占쎈떎.");
         const CodeStr = Math.random().toString(36).substring(2, 8).toUpperCase();
         const inviteCode = `ALPACO-${CodeStr}`;
         return this.prisma.participant.create({
@@ -239,34 +262,182 @@ let AdminService = class AdminService {
         return this.prisma.participant.createMany({ data });
     }
     async sendInvitation(participantId) {
-        const p = await this.prisma.participant.findUnique({
+        const participant = await this.prisma.participant.findUnique({
             where: { id: participantId },
             include: { room: true }
         });
-        if (!p)
-            throw new Error("Participant not found");
-        const inviteLink = `http://localhost:5173/exam?code=${p.invitationCode}`;
-        console.log(`[EMAIL SEND] To: ${p.email}`);
-        console.log(`[EMAIL BODY] 안녕하세요 ${p.name}님, [${p.room.roomName}] 초대 코드: ${p.invitationCode}`);
-        console.log(`[EMAIL LINK] 접속 링크: ${inviteLink}`);
-        return { success: true, message: `${p.email}로 초대 링크가 전송되었습니다.` };
+        if (!participant)
+            throw new Error('Participant not found');
+        const frontendUrl = this.getFrontendUrl();
+        const inviteLink = `${frontendUrl}/exam?code=${participant.invitationCode}`;
+        const subject = `[Alpaco Exam] ${participant.room.roomName} 시험 초대 안내`;
+        const html = this.email.getInvitationTemplate(participant.name, participant.room.roomName, participant.invitationCode, inviteLink);
+        const text = `안녕하세요 ${participant.name}님,\n\n[${participant.room.roomName}] 시험 초대 안내입니다.\n\n- 초대 코드: ${participant.invitationCode}\n- 접속 링크: ${inviteLink}\n`;
+        try {
+            await this.email.sendEmail(participant.email, subject, html, text);
+            return { success: true, message: `${participant.email}로 초대 링크가 전송되었습니다.` };
+        }
+        catch (e) {
+            const errorMessage = e?.message || String(e);
+            return {
+                success: false,
+                message: `이메일 발송에 실패했습니다. (SES 권한/발신자 설정 확인 필요)\n- 초대코드: ${participant.invitationCode}\n- 링크: ${inviteLink}\n- 에러: ${errorMessage}`,
+                inviteCode: participant.invitationCode,
+                inviteLink,
+            };
+        }
+    }
+    async getParticipantGrading(adminId, participantId) {
+        await this.logAdminAction(adminId, 'PARTICIPANT_GRADING_VIEW', participantId);
+        const participant = await this.prisma.participant.findUnique({
+            where: { id: participantId },
+            include: { room: { include: { exam: true } } },
+        });
+        if (!participant)
+            throw new common_1.BadRequestException('participant not found');
+        const examQuestions = await this.prisma.examQuestion.findMany({
+            where: { examId: participant.room.examId },
+            orderBy: { orderNum: 'asc' },
+            include: { question: { include: { parent: true } } },
+        });
+        const submissions = await this.prisma.submission.findMany({
+            where: { participantId },
+            include: { question: true },
+        });
+        const submissionsByQuestionId = new Map(submissions.map((s) => [s.questionId, s]));
+        const items = examQuestions.map((eq) => {
+            const q = eq.question;
+            const sub = submissionsByQuestionId.get(q.id);
+            const content = { ...(q.content || {}) };
+            if (q.parentId && q.parent && !content.passage) {
+                content.passage = q.parent.content?.passage;
+            }
+            return {
+                questionId: q.id,
+                orderNum: eq.orderNum,
+                point: eq.point,
+                type: q.type,
+                content,
+                correctAnswer: q.correctAnswer ?? null,
+                submission: sub
+                    ? {
+                        answerContent: sub.answerContent,
+                        earnedPoint: sub.earnedPoint ?? 0,
+                        gradingStatus: sub.gradingStatus,
+                    }
+                    : {
+                        answerContent: { answer: null },
+                        earnedPoint: 0,
+                        gradingStatus: 'PENDING',
+                    },
+            };
+        });
+        return {
+            participant: {
+                id: participant.id,
+                name: participant.name,
+                email: participant.email,
+                status: participant.status,
+                roomId: participant.roomId,
+                roomName: participant.room.roomName,
+                examTitle: participant.room.exam.title,
+            },
+            questions: items,
+        };
+    }
+    async gradeParticipantAnswer(adminId, participantId, questionId, earnedPoint) {
+        const participant = await this.prisma.participant.findUnique({
+            where: { id: participantId },
+            include: { room: true },
+        });
+        if (!participant)
+            throw new common_1.BadRequestException('participant not found');
+        if (participant.status !== 'COMPLETED') {
+            throw new common_1.BadRequestException('participant is not completed');
+        }
+        const eq = await this.prisma.examQuestion.findFirst({
+            where: { examId: participant.room.examId, questionId },
+            select: { point: true, orderNum: true },
+        });
+        if (!eq)
+            throw new common_1.BadRequestException('question not found in exam');
+        const point = eq.point;
+        const value = Number.isFinite(earnedPoint) ? Math.round(earnedPoint) : 0;
+        if (value < 0 || value > point) {
+            throw new common_1.BadRequestException(`earnedPoint must be between 0 and ${point}`);
+        }
+        await this.prisma.submission.update({
+            where: { participantId_questionId: { participantId, questionId } },
+            data: {
+                earnedPoint: value,
+                gradingStatus: 'MANUAL_GRADED',
+                gradedById: adminId,
+            },
+        });
+        await this.logAdminAction(adminId, 'PARTICIPANT_GRADED', participantId, `Q=${questionId} earnedPoint=${value}`);
+        return { success: true, questionId, earnedPoint: value };
+    }
+    async sendSelectedInvitations(participantIds, template) {
+        const ids = (participantIds || []).map((id) => (id || '').trim()).filter(Boolean);
+        if (ids.length === 0)
+            throw new common_1.BadRequestException('participantIds is required');
+        if (ids.length > 200)
+            throw new common_1.BadRequestException('participantIds is too large (max 200)');
+        const participants = await this.prisma.participant.findMany({
+            where: { id: { in: ids } },
+            include: { room: true }
+        });
+        const templateText = (template ?? '').trim();
+        const results = [];
+        for (const p of participants) {
+            const frontendUrl = this.getFrontendUrl();
+            const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
+            const subject = `[Alpaco Exam] ${p.room.roomName} 占쏙옙占쏙옙 占십댐옙 占싫놂옙`;
+            const contentText = templateText
+                ? templateText
+                    .replace(/{{name}}/g, p.name)
+                    .replace(/{{room}}/g, p.room.roomName)
+                    .replace(/{{code}}/g, p.invitationCode)
+                    .replace(/{{link}}/g, inviteLink)
+                : `占싫놂옙占싹쇽옙占쏙옙 ${p.name}占쏙옙,\n\n[${p.room.roomName}] 占쏙옙占쏙옙 占십댐옙 占싫놂옙占쌉니댐옙.\n\n- 占십댐옙 占쌘듸옙: ${p.invitationCode}\n- 占쏙옙占쏙옙 占쏙옙크: ${inviteLink}\n`;
+            const html = templateText
+                ? this.toSimpleHtmlFromText(contentText)
+                : this.email.getInvitationTemplate(p.name, p.room.roomName, p.invitationCode, inviteLink);
+            try {
+                await this.email.sendEmail(p.email, subject, html, contentText);
+                results.push({ participantId: p.id, email: p.email, status: 'SUCCESS' });
+            }
+            catch (e) {
+                results.push({ participantId: p.id, email: p.email, status: 'FAILED', error: e?.message || String(e) });
+            }
+        }
+        return { success: true, count: participants.length, results };
     }
     async sendBulkInvitations(roomId, template) {
         const participants = await this.prisma.participant.findMany({
             where: { roomId },
             include: { room: true }
         });
+        const results = [];
         for (const p of participants) {
-            const inviteLink = `http://localhost:5173/exam?code=${p.invitationCode}`;
+            const frontendUrl = this.getFrontendUrl();
+            const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
+            let subject = `[Alpaco Exam] ${p.room.roomName} ?占쏀뿕 珥덌옙? ?占쎈궡`;
             let content = template
                 .replace(/{{name}}/g, p.name)
                 .replace(/{{room}}/g, p.room.roomName)
                 .replace(/{{code}}/g, p.invitationCode)
                 .replace(/{{link}}/g, inviteLink);
-            console.log(`[BULK EMAIL SEND] To: ${p.email}`);
-            console.log(`[CONTENT]\n${content}\n-------------------`);
+            try {
+                const html = this.toSimpleHtmlFromText(content);
+                await this.email.sendEmail(p.email, subject, html, content);
+                results.push({ email: p.email, status: 'SUCCESS' });
+            }
+            catch (e) {
+                results.push({ email: p.email, status: 'FAILED', error: e.message });
+            }
         }
-        return { success: true, count: participants.length };
+        return { success: true, count: participants.length, results };
     }
     async getRoomSummary() {
         const now = new Date();
@@ -324,6 +495,36 @@ let AdminService = class AdminService {
             data: { category: newName }
         });
     }
+    async moveQuestionsToCategory(questionIds, targetCategory) {
+        const ids = (questionIds || []).map((id) => (id || '').trim()).filter(Boolean);
+        const category = (targetCategory || '').trim();
+        if (ids.length === 0)
+            throw new common_1.BadRequestException('questionIds is required');
+        if (!category)
+            throw new common_1.BadRequestException('targetCategory is required');
+        const result = await this.prisma.question.updateMany({
+            where: { id: { in: ids } },
+            data: { category },
+        });
+        return { moved: result.count };
+    }
+    async deleteCategory(category) {
+        const name = (category || '').trim();
+        if (!name)
+            throw new common_1.BadRequestException('category is required');
+        const ids = await this.prisma.question.findMany({
+            where: { category: name },
+            select: { id: true },
+        });
+        if (ids.length === 0)
+            return { deleted: 0 };
+        const idList = ids.map(i => i.id);
+        const result = await this.prisma.$transaction(async (tx) => {
+            await tx.question.deleteMany({ where: { parentId: { in: idList } } });
+            return tx.question.deleteMany({ where: { category: name } });
+        });
+        return { deleted: result.count };
+    }
     async updateRoomStatus(id, status) {
         if (status === 'IN_PROGRESS') {
             const room = await this.prisma.examRoom.findUnique({ where: { id } });
@@ -357,11 +558,42 @@ let AdminService = class AdminService {
             }
         });
     }
+    async updateRoom(id, data) {
+        const current = await this.prisma.examRoom.findUnique({ where: { id } });
+        if (!current)
+            throw new Error("怨좎궗???占쎈낫媛 議댁옱?占쏙옙? ?占쎌뒿?占쎈떎.");
+        if (current.status !== 'READY') {
+            throw new Error("?占쏙옙? ?占쎌옉??怨좎궗?占쏙옙? ?占쎈낫占??占쎌젙?????占쎌뒿?占쎈떎.");
+        }
+        const updateData = { ...data };
+        if (data.endAt || data.startAt || data.durationMinutes !== undefined) {
+            const newStart = data.startAt ? new Date(data.startAt) : current.startAt;
+            if (data.endAt) {
+                const newEnd = new Date(data.endAt);
+                const diffMs = newEnd.getTime() - newStart.getTime();
+                updateData.startAt = newStart;
+                updateData.endAt = newEnd;
+                updateData.durationMinutes = Math.max(1, Math.round(diffMs / 60000));
+            }
+            else {
+                const newDuration = data.durationMinutes !== undefined ? data.durationMinutes : current.durationMinutes;
+                updateData.startAt = newStart;
+                updateData.durationMinutes = newDuration;
+                updateData.endAt = new Date(newStart.getTime() + newDuration * 60 * 1000);
+            }
+        }
+        return this.prisma.examRoom.update({
+            where: { id },
+            data: updateData
+        });
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        aws_service_1.AwsService])
+        aws_service_1.AwsService,
+        email_service_1.EmailService,
+        presence_service_1.PresenceService])
 ], AdminService);
 //# sourceMappingURL=admin.service.js.map

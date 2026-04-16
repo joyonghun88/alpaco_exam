@@ -82,6 +82,12 @@ let AdminController = class AdminController {
     async addQuestionToPool(body) {
         return this.admin.addQuestionToPool(body.category, body.type, body.content, body.correctAnswer, body.parentId);
     }
+    async deleteCategory(name) {
+        return this.admin.deleteCategory(name);
+    }
+    async moveQuestionsToCategory(body) {
+        return this.admin.moveQuestionsToCategory(body.questionIds, body.targetCategory);
+    }
     async deleteQuestion(id) {
         return this.admin.deleteQuestion(id);
     }
@@ -115,6 +121,9 @@ let AdminController = class AdminController {
     async deleteRoom(id, req) {
         return this.admin.deleteRoom(req.user.userId, id);
     }
+    async updateRoom(id, body) {
+        return this.admin.updateRoom(id, body);
+    }
     async getParticipants(req) {
         return this.admin.getParticipants(req.user.userId);
     }
@@ -127,16 +136,29 @@ let AdminController = class AdminController {
     async sendInvitation(id) {
         return this.admin.sendInvitation(id);
     }
+    async getParticipantGrading(id, req) {
+        return this.admin.getParticipantGrading(req.user.userId, id);
+    }
+    async gradeParticipantAnswer(id, body, req) {
+        return this.admin.gradeParticipantAnswer(req.user.userId, id, body.questionId, body.earnedPoint);
+    }
+    async sendSelectedInvitations(body) {
+        if (!body?.participantIds?.length) {
+            throw new common_1.BadRequestException('participantIds is required');
+        }
+        return this.admin.sendSelectedInvitations(body.participantIds, body.template);
+    }
     async bulkAddParticipants(body) {
         return this.admin.bulkAddParticipants(body.roomId, body.participants);
     }
     async sendBulkInvitations(roomId, body) {
         return this.admin.sendBulkInvitations(roomId, body.template);
     }
-    async uploadFile(file) {
+    async uploadFile(file, req) {
         if (!file)
             throw new common_1.BadRequestException('파일이 업로드되지 않았습니다.');
-        return { url: `http://localhost:3000/uploads/${file.filename}` };
+        const baseUrl = process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+        return { url: `${baseUrl}/uploads/${file.filename}` };
     }
 };
 exports.AdminController = AdminController;
@@ -256,6 +278,22 @@ __decorate([
 ], AdminController.prototype, "addQuestionToPool", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Delete)('questions/pool/category'),
+    __param(0, (0, common_1.Query)('name')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deleteCategory", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)('questions/pool/move'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "moveQuestionsToCategory", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Delete)('questions/pool/:id'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
@@ -351,6 +389,15 @@ __decorate([
 ], AdminController.prototype, "deleteRoom", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)('rooms/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateRoom", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('participants'),
     __param(0, (0, common_1.Req)()),
     __metadata("design:type", Function),
@@ -382,6 +429,33 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "sendInvitation", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Get)('participants/:id/grading'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getParticipantGrading", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)('participants/:id/grading'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "gradeParticipantAnswer", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Post)('participants/invite-bulk'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "sendSelectedInvitations", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)('participants/bulk'),
@@ -427,8 +501,9 @@ __decorate([
         }
     })),
     __param(0, (0, common_1.UploadedFile)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "uploadFile", null);
 exports.AdminController = AdminController = __decorate([

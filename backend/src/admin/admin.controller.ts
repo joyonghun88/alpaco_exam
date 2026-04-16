@@ -112,6 +112,18 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Delete('questions/pool/category')
+  async deleteCategory(@Query('name') name: string) {
+    return this.admin.deleteCategory(name);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('questions/pool/move')
+  async moveQuestionsToCategory(@Body() body: { questionIds: string[]; targetCategory: string }) {
+    return this.admin.moveQuestionsToCategory(body.questionIds, body.targetCategory);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete('questions/pool/:id')
   async deleteQuestion(@Param('id') id: string) {
     return this.admin.deleteQuestion(id);
@@ -228,6 +240,31 @@ export class AdminController {
   @Post('participants/:id/invite')
   async sendInvitation(@Param('id') id: string) {
     return this.admin.sendInvitation(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('participants/:id/grading')
+  async getParticipantGrading(@Param('id') id: string, @Req() req: any) {
+    return this.admin.getParticipantGrading(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('participants/:id/grading')
+  async gradeParticipantAnswer(
+    @Param('id') id: string,
+    @Body() body: { questionId: string; earnedPoint: number },
+    @Req() req: any,
+  ) {
+    return this.admin.gradeParticipantAnswer(req.user.userId, id, body.questionId, body.earnedPoint);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('participants/invite-bulk')
+  async sendSelectedInvitations(@Body() body: { participantIds: string[], template: string }) {
+    if (!body?.participantIds?.length) {
+      throw new BadRequestException('participantIds is required');
+    }
+    return this.admin.sendSelectedInvitations(body.participantIds, body.template);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -28,11 +28,39 @@ interface SecurityLog {
 
 interface Participant {
   id: string; name: string; email: string; roomName: string; status: string;
+  isOnline?: boolean;
   startedAt: string | null; violationCount: number;
   totalScore: number;
   questionResults: { questionId: string, orderNum: number, point: number, earnedPoint: number, gradingStatus: string }[];
   securityLogs: SecurityLog[];
   videoUrl?: string;
+}
+
+interface ParticipantGradingItem {
+  questionId: string;
+  orderNum: number;
+  point: number;
+  type: string;
+  content: any;
+  correctAnswer: any;
+  submission: {
+    answerContent: any;
+    earnedPoint: number;
+    gradingStatus: string;
+  };
+}
+
+interface ParticipantGradingResponse {
+  participant: {
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    roomId: string;
+    roomName: string;
+    examTitle: string;
+  };
+  questions: ParticipantGradingItem[];
 }
 
 const VIOLATION_MAP: Record<string, string> = {
@@ -260,6 +288,13 @@ export default function AdminDashboard() {
   const [tempCameraTerms, setTempCameraTerms] = useState('');
   const [liveViewParticipantId, setLiveViewParticipantId] = useState<string | null>(null);
 
+  const [gradingParticipantId, setGradingParticipantId] = useState<string | null>(null);
+  const [gradingQuestionId, setGradingQuestionId] = useState<string | null>(null);
+  const [gradingData, setGradingData] = useState<ParticipantGradingResponse | null>(null);
+  const [gradingEarnedPoint, setGradingEarnedPoint] = useState<number>(0);
+  const [gradingLoading, setGradingLoading] = useState(false);
+  const [gradingSaving, setGradingSaving] = useState(false);
+
   const DEFAULT_WAIT_MSG = "시험 시작 전 시스템 환경을 점검해 주세요. 전체 화면 모드가 유지되어야 하며, 시험 중 브라우저 이탈 시 부정행위로 간주될 수 있습니다.";
 
   const ICON_OPTIONS = {
@@ -269,6 +304,11 @@ export default function AdminDashboard() {
   const [isMosaicMode, setIsMosaicMode] = useState(false);
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
+
+  const getProgressStatus = (p: Participant) => {
+    if (p.status === 'TESTING' && p.isOnline === false) return 'DISCONNECTED';
+    return p.status;
+  };
 
   const fetchSummaries = async () => {
     try {
@@ -299,6 +339,68 @@ export default function AdminDashboard() {
       });
     } catch (err) {
       console.error('Failed to log access', err);
+    }
+  };
+
+  const closeGrading = () => {
+    setGradingParticipantId(null);
+    setGradingQuestionId(null);
+    setGradingData(null);
+    setGradingEarnedPoint(0);
+    setGradingLoading(false);
+    setGradingSaving(false);
+  };
+
+  const openGrading = async (participantId: string, questionId: string) => {
+    setGradingParticipantId(participantId);
+    setGradingQuestionId(questionId);
+    setGradingData(null);
+    setGradingLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/participants/${participantId}/grading`, { headers: authHeader });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        alert(data.message || '채점 데이터를 불러오지 못했습니다.');
+        closeGrading();
+        return;
+      }
+
+      const data = (await res.json()) as ParticipantGradingResponse;
+      setGradingData(data);
+
+      const item = data.questions.find((q) => q.questionId === questionId);
+      setGradingEarnedPoint(item?.submission?.earnedPoint ?? 0);
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+      closeGrading();
+    } finally {
+      setGradingLoading(false);
+    }
+  };
+
+  const saveGrading = async () => {
+    if (!gradingParticipantId || !gradingQuestionId) return;
+    setGradingSaving(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/participants/${gradingParticipantId}/grading`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ questionId: gradingQuestionId, earnedPoint: gradingEarnedPoint }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as any));
+        alert(data.message || '채점 저장에 실패했습니다.');
+        return;
+      }
+
+      if (selectedRoom) await fetchRoomDetail(selectedRoom.id);
+      closeGrading();
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+    } finally {
+      setGradingSaving(false);
     }
   };
 
@@ -378,7 +480,14 @@ export default function AdminDashboard() {
     totalViolations: summaries.reduce((sum, s) => sum + s.stats.violations, 0),
   };
 
+  const selectedGradingItem =
+    gradingData && gradingQuestionId
+      ? gradingData.questions.find((q) => q.questionId === gradingQuestionId) || null
+      : null;
+
   const handleDownloadExcel = () => {
+    return handleDownloadExcelV2();
+    /* legacy export (disabled)
     if (!selectedRoom || participants.length === 0) return;
     
     // 문항 헤더 동적 생성 (Q1, Q2...)
@@ -396,7 +505,7 @@ export default function AdminDashboard() {
         p.id.split('-')[0],
         p.name,
         p.email,
-        p.status,
+        getProgressStatus(p),
         p.totalScore,
         ...qScores,
         p.violationCount,
@@ -413,6 +522,50 @@ export default function AdminDashboard() {
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", `평가결과리포트_${selectedRoom.roomName}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    */
+  };
+
+  const handleDownloadExcelV2 = () => {
+    if (!selectedRoom || participants.length === 0) return;
+
+    const maxQCount = participants.reduce((max, p) => Math.max(max, p.questionResults.length), 0);
+    const qHeaders = Array.from({ length: maxQCount }, (_, i) => [`Q${i + 1}`, `Q${i + 1}_STATUS`]).flat();
+    const headers = ['ID', 'Name', 'Email', 'ProgressStatus', 'TotalScore', ...qHeaders, 'Violations', 'StartedAt'];
+
+    const rows = participants.map((p) => {
+      const sorted = [...p.questionResults].sort((a, b) => a.orderNum - b.orderNum);
+      const qCells: any[] = [];
+      for (let i = 0; i < maxQCount; i++) {
+        const qr = sorted[i];
+        qCells.push(qr?.earnedPoint ?? '');
+        qCells.push(qr?.gradingStatus ?? '');
+      }
+
+      return [
+        p.id.split('-')[0],
+        p.name,
+        p.email,
+        getProgressStatus(p),
+        p.totalScore,
+        ...qCells,
+        p.violationCount,
+        p.startedAt ? new Date(p.startedAt).toLocaleString('ko-KR') : '',
+      ];
+    });
+
+    const escapeCell = (value: any) => String(value ?? '').replace(/"/g, '""');
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${escapeCell(cell)}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `exam_results_${selectedRoom.roomName}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -651,14 +804,14 @@ export default function AdminDashboard() {
              {isMosaicMode && (
                <div className="flex items-center space-x-2 text-[10px] font-black text-primary-strong uppercase">
                   <div className="w-2 h-2 rounded-full bg-ai-accent animate-pulse" />
-                  <span>{participants.filter(p => p.status === 'TESTING').length} Active Streams</span>
+               <span>{participants.filter(p => p.status === 'TESTING' && p.isOnline !== false).length} Active Streams</span>
                </div>
              )}
           </div>
 
           {isMosaicMode ? (
             <div className="p-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-bg-section/10">
-               {participants.filter(p => p.status === 'TESTING').map(p => (
+               {participants.filter(p => p.status === 'TESTING' && p.isOnline !== false).map(p => (
                  <div key={p.id} className="relative group" onClick={() => logAccess(p.id, 'MOSAIC_FOCUS')}>
                     <div className="aspect-video bg-black rounded-[2rem] overflow-hidden border-2 border-transparent group-hover:border-primary transition-all shadow-lg">
                        <KvsViewerItem participantId={p.id} />
@@ -674,7 +827,7 @@ export default function AdminDashboard() {
                     </div>
                  </div>
                ))}
-               {participants.filter(p => p.status === 'TESTING').length === 0 && (
+               {participants.filter(p => p.status === 'TESTING' && p.isOnline !== false).length === 0 && (
                  <div className="col-span-full py-20 text-center flex flex-col items-center">
                     <VideoOff size={48} className="text-atomic-gray-300 mb-4" />
                     <p className="text-text-caption font-bold italic">현재 시험 중인 인원이 없습니다.</p>
@@ -693,7 +846,9 @@ export default function AdminDashboard() {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-button-outline">
-                   {participants.map(p => (
+                   {participants.map(p => {
+                     const progressStatus = getProgressStatus(p);
+                     return (
                      <React.Fragment key={p.id}>
                       <tr 
                         onClick={() => setExpandedParticipantId(expandedParticipantId === p.id ? null : p.id)}
@@ -708,13 +863,14 @@ export default function AdminDashboard() {
                          </td>
                          <td className="px-10 py-6">
                              <div className={`inline-flex items-center px-4 py-1.5 rounded-2xl text-xs font-black shadow-sm ${
-                                p.status === 'READY' ? 'bg-bg-section text-atomic-gray-500' :
-                                p.status === 'TESTING' ? 'bg-primary text-white shadow-primary/30' :
-                                p.status === 'COMPLETED' ? 'bg-emerald-500 text-white shadow-emerald-200' :
+                                progressStatus === 'READY' ? 'bg-bg-section text-atomic-gray-500' :
+                                progressStatus === 'TESTING' ? 'bg-primary text-white shadow-primary/30' :
+                                progressStatus === 'DISCONNECTED' ? 'bg-amber-500 text-white shadow-amber-200' :
+                                progressStatus === 'COMPLETED' ? 'bg-emerald-500 text-white shadow-emerald-200' :
                                 'bg-red-600 text-white'
                              }`}>
-                               <span className={`w-1.5 h-1.5 rounded-full mr-2 bg-white ${p.status === 'TESTING' ? 'animate-pulse' : ''}`} />
-                               {p.status}
+                               <span className={`w-1.5 h-1.5 rounded-full mr-2 bg-white ${progressStatus === 'TESTING' ? 'animate-pulse' : ''}`} />
+                               {progressStatus}
                              </div>
                          </td>
                          <td className="px-10 py-6">
@@ -729,7 +885,7 @@ export default function AdminDashboard() {
                          </td>
                          <td className="px-10 py-6 text-right">
                             <div className="flex items-center justify-end space-x-3">
-                               {p.status === 'TESTING' && (
+                               {progressStatus === 'TESTING' && (
                                   <button 
                                      onClick={(e) => { 
                                         e.stopPropagation(); 
@@ -770,7 +926,14 @@ export default function AdminDashboard() {
                                  </h4>
                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                     {[...p.questionResults].sort((a, b) => a.orderNum - b.orderNum).map(qr => (
-                                       <div key={qr.questionId} className="bg-bg-section/40 p-4 rounded-2xl border border-button-outline/50">
+                                       <div
+                                         key={qr.questionId}
+                                         onClick={(e) => {
+                                           e.stopPropagation();
+                                           if (p.status === 'COMPLETED') openGrading(p.id, qr.questionId);
+                                         }}
+                                         className={`bg-bg-section/40 p-4 rounded-2xl border border-button-outline/50 ${p.status === 'COMPLETED' ? 'cursor-pointer hover:bg-bg-section/60' : ''}`}
+                                       >
                                           <div className="flex justify-between items-start mb-2">
                                              <span className="text-[10px] font-black text-text-caption">Q{qr.orderNum}</span>
                                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded ${qr.earnedPoint === qr.point ? 'bg-emerald-100 text-emerald-600' : qr.earnedPoint > 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
@@ -781,6 +944,9 @@ export default function AdminDashboard() {
                                              <span className="text-lg font-black text-text-title">{qr.earnedPoint}</span>
                                              <span className="text-[10px] font-bold text-text-caption mb-1">/ {qr.point}pt</span>
                                           </div>
+                                          {qr.gradingStatus === 'PENDING' && (
+                                            <div className="mt-2 text-[9px] font-black text-amber-600 uppercase tracking-widest">채점 필요</div>
+                                          )}
                                        </div>
                                     ))}
                                     {p.questionResults.length === 0 && (
@@ -823,7 +989,8 @@ export default function AdminDashboard() {
                         </tr>
                       )}
                      </React.Fragment>
-                   ))}
+                   );
+                   })}
                    {participants.length === 0 && (
                      <tr>
                         <td colSpan={4} className="py-24 text-center text-text-caption italic font-medium">데이터가 없습니다.</td>
@@ -1035,6 +1202,103 @@ export default function AdminDashboard() {
             participantId={liveViewParticipantId} 
             onClose={() => setLiveViewParticipantId(null)} 
           />
+       )}
+
+       {gradingParticipantId && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-text-title/40 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden border border-button-outline">
+              <div className="p-8 border-b border-button-outline flex items-start justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-text-title uppercase tracking-tight">문항 채점</h3>
+                  <p className="text-xs font-bold text-text-caption mt-2">
+                    {gradingData?.participant?.name || '수험생'} · {gradingData?.participant?.email || ''}
+                  </p>
+                </div>
+                <button onClick={closeGrading} className="px-4 py-2 rounded-2xl bg-bg-section hover:bg-red-50 hover:text-red-600 transition font-black">
+                  닫기
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                {gradingLoading && (
+                  <div className="py-20 text-center text-text-caption font-bold">불러오는 중...</div>
+                )}
+
+                {!gradingLoading && gradingData && selectedGradingItem && (
+                  <>
+                    <div className="bg-bg-section/40 border border-button-outline rounded-[2rem] p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-black text-text-title">
+                          Q{selectedGradingItem.orderNum} · {selectedGradingItem.type} · {selectedGradingItem.point}pt
+                        </div>
+                        <div className={`text-[10px] font-black px-2 py-1 rounded-xl ${selectedGradingItem.submission.gradingStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {selectedGradingItem.submission.gradingStatus}
+                        </div>
+                      </div>
+                      <div className="mt-4 whitespace-pre-wrap text-sm font-bold text-text-title">
+                        {selectedGradingItem.content?.title || selectedGradingItem.content?.text || ''}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white border border-button-outline rounded-[2rem] p-6">
+                        <div className="text-[10px] font-black text-text-caption uppercase tracking-widest mb-2">수험생 답안</div>
+                        <div className="whitespace-pre-wrap text-sm font-bold text-text-title">
+                          {String(selectedGradingItem.submission?.answerContent?.answer ?? '') || '(없음)'}
+                        </div>
+                      </div>
+                      <div className="bg-white border border-button-outline rounded-[2rem] p-6">
+                        <div className="text-[10px] font-black text-text-caption uppercase tracking-widest mb-2">모범/정답(참고)</div>
+                        <pre className="text-xs font-mono bg-bg-section/40 p-4 rounded-2xl overflow-auto border border-button-outline/50">{JSON.stringify(selectedGradingItem.correctAnswer, null, 2)}</pre>
+                      </div>
+                    </div>
+
+                    <div className="bg-bg-section/40 border border-button-outline rounded-[2rem] p-6">
+                      <div className="text-[10px] font-black text-text-caption uppercase tracking-widest mb-4">점수</div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          onClick={() => setGradingEarnedPoint(selectedGradingItem.point)}
+                          className="px-5 py-3 bg-emerald-600 text-white rounded-2xl font-black text-sm"
+                        >
+                          정답 ({selectedGradingItem.point})
+                        </button>
+                        <button
+                          onClick={() => setGradingEarnedPoint(0)}
+                          className="px-5 py-3 bg-red-600 text-white rounded-2xl font-black text-sm"
+                        >
+                          오답 (0)
+                        </button>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            min={0}
+                            max={selectedGradingItem.point}
+                            value={gradingEarnedPoint}
+                            onChange={(e) => setGradingEarnedPoint(Math.max(0, Math.min(selectedGradingItem.point, Number(e.target.value))))}
+                            className="w-28 px-4 py-3 rounded-2xl border border-button-outline font-black outline-none"
+                          />
+                          <span className="text-xs font-black text-text-caption">/ {selectedGradingItem.point}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="p-6 bg-bg-section/30 border-t border-button-outline flex justify-end space-x-3">
+                <button onClick={closeGrading} className="px-6 py-4 bg-white border border-button-outline rounded-2xl font-black text-sm hover:bg-bg-section transition">
+                  취소
+                </button>
+                <button
+                  onClick={saveGrading}
+                  disabled={gradingSaving || gradingLoading || !selectedGradingItem}
+                  className="px-8 py-4 bg-primary text-white rounded-2xl font-black text-sm disabled:opacity-40"
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
        )}
     </div>
   );

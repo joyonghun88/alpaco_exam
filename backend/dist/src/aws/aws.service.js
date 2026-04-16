@@ -13,20 +13,78 @@ exports.AwsService = void 0;
 const common_1 = require("@nestjs/common");
 const client_kinesis_video_1 = require("@aws-sdk/client-kinesis-video");
 const client_kinesis_video_archived_media_1 = require("@aws-sdk/client-kinesis-video-archived-media");
+const client_kinesis_video_signaling_1 = require("@aws-sdk/client-kinesis-video-signaling");
 const client_sts_1 = require("@aws-sdk/client-sts");
 let AwsService = class AwsService {
     kinesisVideoClient;
     archivedMediaClient;
     stsClient;
+    region;
     constructor() {
-        const region = process.env.AWS_REGION || 'ap-northeast-2';
-        const credentials = {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        };
-        this.kinesisVideoClient = new client_kinesis_video_1.KinesisVideoClient({ region, credentials });
-        this.archivedMediaClient = new client_kinesis_video_archived_media_1.KinesisVideoArchivedMediaClient({ region, credentials });
-        this.stsClient = new client_sts_1.STSClient({ region, credentials });
+        this.region = process.env.AWS_REGION || 'ap-northeast-2';
+        const config = { region: this.region };
+        if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+            config.credentials = {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            };
+        }
+        this.kinesisVideoClient = new client_kinesis_video_1.KinesisVideoClient(config);
+        this.archivedMediaClient = new client_kinesis_video_archived_media_1.KinesisVideoArchivedMediaClient(config);
+        this.stsClient = new client_sts_1.STSClient(config);
+    }
+    async getSignalingEndpoint(channelArn, role) {
+        try {
+            const { ResourceEndpointList } = await this.kinesisVideoClient.send(new client_kinesis_video_1.GetSignalingChannelEndpointCommand({
+                ChannelARN: channelArn,
+                SingleMasterChannelEndpointConfiguration: {
+                    Protocols: ['WSS', 'HTTPS'],
+                    Role: role
+                }
+            }));
+            return ResourceEndpointList?.find(e => e.Protocol === 'WSS')?.ResourceEndpoint;
+        }
+        catch (error) {
+            console.error('Failed to get signaling endpoint:', error);
+            return null;
+        }
+    }
+    async getIceServers(channelArn) {
+        try {
+            const { ResourceEndpointList } = await this.kinesisVideoClient.send(new client_kinesis_video_1.GetSignalingChannelEndpointCommand({
+                ChannelARN: channelArn,
+                SingleMasterChannelEndpointConfiguration: {
+                    Protocols: ['HTTPS'],
+                    Role: 'VIEWER'
+                }
+            }));
+            const httpsEndpoint = ResourceEndpointList?.find(e => e.Protocol === 'HTTPS')?.ResourceEndpoint;
+            if (!httpsEndpoint)
+                throw new Error('Signaling endpoint not found');
+            const signalingConfig = {
+                region: this.region,
+                endpoint: httpsEndpoint,
+            };
+            if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+                signalingConfig.credentials = {
+                    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                };
+            }
+            const signalingClient = new client_kinesis_video_signaling_1.KinesisVideoSignalingClient(signalingConfig);
+            const { IceServerList } = await signalingClient.send(new client_kinesis_video_signaling_1.GetIceServerConfigCommand({
+                ChannelARN: channelArn
+            }));
+            return IceServerList?.map(s => ({
+                urls: s.Uris,
+                username: s.Username,
+                credential: s.Password
+            })) || [];
+        }
+        catch (error) {
+            console.error('Failed to get ICE servers:', error);
+            return [];
+        }
     }
     async getOrCreateStream(participantId) {
         const streamName = `proctor-stream-${participantId}`;
@@ -61,14 +119,6 @@ let AwsService = class AwsService {
                     ChannelType: 'SINGLE_MASTER',
                 });
                 const { ChannelARN } = await this.kinesisVideoClient.send(createCommand);
-                const storageCommand = new client_kinesis_video_1.UpdateMediaStorageConfigurationCommand({
-                    ChannelARN,
-                    MediaStorageConfiguration: {
-                        Status: 'ENABLED',
-                        StreamARN: streamInfo?.StreamARN,
-                    }
-                });
-                await this.kinesisVideoClient.send(storageCommand);
                 const { ChannelInfo } = await this.kinesisVideoClient.send(new client_kinesis_video_1.DescribeSignalingChannelCommand({ ChannelName: channelName }));
                 return ChannelInfo;
             }
@@ -82,7 +132,7 @@ let AwsService = class AwsService {
                 StreamName: streamName,
                 PlaybackMode: 'ON_DEMAND',
             });
-            const { HLSStreamingSessionURL } = await this.archivedMediaClient.send(command);
+            const { HLSStreamingSessionURL } = await this.archivedMediaClient.send(command).catch(() => ({ HLSStreamingSessionURL: null }));
             return HLSStreamingSessionURL;
         }
         catch (error) {
@@ -94,17 +144,7 @@ let AwsService = class AwsService {
         const startTime = new Date(violationTimestamp.getTime() - 10 * 1000);
         const endTime = new Date(violationTimestamp.getTime() + 10 * 1000);
         try {
-            const command = new client_kinesis_video_archived_media_1.GetClipCommand({
-                StreamName: streamName,
-                ClipFragmentSelector: {
-                    FragmentSelectorType: 'SERVER_TIMESTAMP',
-                    TimestampRange: {
-                        StartTimestamp: startTime,
-                        EndTimestamp: endTime
-                    }
-                }
-            });
-            return `https://kinesisvideo.${process.env.AWS_REGION}.amazonaws.com/getClip?streamName=${streamName}&start=${startTime.getTime()}&end=${endTime.getTime()}`;
+            return `https://kinesisvideo.${this.region}.amazonaws.com/getClip?streamName=${streamName}&start=${startTime.getTime()}&end=${endTime.getTime()}`;
         }
         catch (error) {
             return null;
@@ -112,22 +152,20 @@ let AwsService = class AwsService {
     }
     async getTemporaryCredentials() {
         try {
-            const command = new client_sts_1.GetSessionTokenCommand({
-                DurationSeconds: 3600,
-            });
-            const { Credentials } = await this.stsClient.send(command);
-            if (!Credentials) {
-                throw new common_1.InternalServerErrorException('AWS 자격 증명을 가저올 수 없습니다.');
+            const creds = await this.stsClient.config.credentials();
+            if (!creds) {
+                throw new common_1.InternalServerErrorException('AWS 자격 증명을 활성화할 수 없습니다.');
             }
             return {
-                accessKeyId: Credentials.AccessKeyId,
-                secretAccessKey: Credentials.SecretAccessKey,
-                sessionToken: Credentials.SessionToken,
-                region: process.env.AWS_REGION || 'ap-northeast-2',
+                accessKeyId: creds.accessKeyId,
+                secretAccessKey: creds.secretAccessKey,
+                sessionToken: creds.sessionToken,
+                region: this.region,
             };
         }
         catch (error) {
-            throw new common_1.InternalServerErrorException('AWS 임시 권한 발급에 실패했습니다.');
+            console.error('Failed to resolve credentials:', error);
+            throw new common_1.InternalServerErrorException('AWS 임시 권한 획득에 실패했습니다.');
         }
     }
 };

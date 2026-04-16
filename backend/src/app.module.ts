@@ -12,6 +12,7 @@ import { ExamModule } from './exam/exam.module';
 import { AwsModule } from './aws/aws.module';
 import { RedisModule } from './redis/redis.module';
 import { EmailModule } from './email/email.module';
+import { PresenceModule } from './presence/presence.module';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { EmailModule } from './email/email.module';
     ExamModule, 
     AwsModule,
     RedisModule,
-    EmailModule
+    EmailModule,
+    PresenceModule
   ],
   controllers: [AppController],
   providers: [

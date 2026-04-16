@@ -82,6 +82,7 @@ export declare class AdminController {
             email: string;
             roomName: string;
             status: import("@prisma/client").$Enums.ParticipantStatus;
+            isOnline: boolean;
             startedAt: Date | null;
             violationCount: number;
             inviteCode: string;
@@ -176,6 +177,15 @@ export declare class AdminController {
         content: import("@prisma/client/runtime/library").JsonValue;
         correctAnswer: import("@prisma/client/runtime/library").JsonValue | null;
         parentId: string | null;
+    }>;
+    deleteCategory(name: string): Promise<{
+        deleted: number;
+    }>;
+    moveQuestionsToCategory(body: {
+        questionIds: string[];
+        targetCategory: string;
+    }): Promise<{
+        moved: number;
     }>;
     deleteQuestion(id: string): Promise<{
         id: string;
@@ -344,6 +354,23 @@ export declare class AdminController {
         cameraTerms: string | null;
         examId: string;
     }>;
+    updateRoom(id: string, body: any): Promise<{
+        id: string;
+        roomName: string;
+        startAt: Date;
+        endAt: Date;
+        durationMinutes: number;
+        status: import("@prisma/client").$Enums.RoomStatus;
+        isShuffleQuestions: boolean;
+        isRequireCamera: boolean;
+        violationLimit: number;
+        waitingMessage: string | null;
+        waitingTitle: string | null;
+        iconType: string | null;
+        standardTerms: string | null;
+        cameraTerms: string | null;
+        examId: string;
+    }>;
     getParticipants(req: any): Promise<({
         room: {
             id: string;
@@ -402,6 +429,59 @@ export declare class AdminController {
     sendInvitation(id: string): Promise<{
         success: boolean;
         message: string;
+        inviteCode?: undefined;
+        inviteLink?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        inviteCode: string;
+        inviteLink: string;
+    }>;
+    getParticipantGrading(id: string, req: any): Promise<{
+        participant: {
+            id: string;
+            name: string;
+            email: string;
+            status: import("@prisma/client").$Enums.ParticipantStatus;
+            roomId: string;
+            roomName: string;
+            examTitle: string;
+        };
+        questions: {
+            questionId: any;
+            orderNum: number;
+            point: number;
+            type: any;
+            content: any;
+            correctAnswer: any;
+            submission: {
+                answerContent: import("@prisma/client/runtime/library").JsonValue;
+                earnedPoint: number;
+                gradingStatus: import("@prisma/client").$Enums.GradingStatus;
+            } | {
+                answerContent: {
+                    answer: null;
+                };
+                earnedPoint: number;
+                gradingStatus: string;
+            };
+        }[];
+    }>;
+    gradeParticipantAnswer(id: string, body: {
+        questionId: string;
+        earnedPoint: number;
+    }, req: any): Promise<{
+        success: boolean;
+        questionId: string;
+        earnedPoint: number;
+    }>;
+    sendSelectedInvitations(body: {
+        participantIds: string[];
+        template: string;
+    }): Promise<{
+        success: boolean;
+        count: number;
+        results: any[];
     }>;
     bulkAddParticipants(body: {
         roomId: string;
@@ -415,8 +495,9 @@ export declare class AdminController {
     }): Promise<{
         success: boolean;
         count: number;
+        results: any[];
     }>;
-    uploadFile(file: any): Promise<{
+    uploadFile(file: any, req: any): Promise<{
         url: string;
     }>;
 }

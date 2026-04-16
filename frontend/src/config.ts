@@ -1,7 +1,10 @@
 function normalizeBaseUrl(value: string | undefined, fallback: string) {
   const raw = (value ?? '').trim();
   if (!raw) return fallback;
-  return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+  // Guard against accidental values like "/" which would become an empty string
+  // after trimming the trailing slash, and then break URL concatenation.
+  const normalized = raw.endsWith('/') ? raw.slice(0, -1) : raw;
+  return normalized ? normalized : fallback;
 }
 
 // Examples:
