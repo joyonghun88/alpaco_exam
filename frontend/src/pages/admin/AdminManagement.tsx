@@ -149,12 +149,13 @@ export default function AdminManagement() {
                   <td className="px-10 py-6">
                      <select 
                        value={admin.role}
+                       disabled={admin.role === 'SUPER_ADMIN'}
                        onChange={(e) => updateRole(admin.id, e.target.value)}
                        className={`px-4 py-1.5 rounded-xl text-xs font-black outline-none border-2 transition-all ${
                          admin.role === 'SUPER_ADMIN' ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' :
                          admin.role === 'MANAGER' ? 'bg-bg-default text-text-title border-button-outline' :
                          'bg-bg-section text-text-caption border-transparent'
-                       }`}
+                       } disabled:opacity-60 disabled:cursor-not-allowed`}
                      >
                        <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                        <option value="MANAGER">MANAGER</option>
