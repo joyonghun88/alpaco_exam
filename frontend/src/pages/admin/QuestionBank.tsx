@@ -340,6 +340,7 @@ export default function QuestionBank() {
   };
 
   const handleEdit = (q: Question) => {
+    const content: any = (q as any)?.content || {};
     const normalizedOptions = normalizeOptionsForEdit(q);
     const normalizedCorrect = normalizeStringArray((q as any)?.correctAnswer);
 
@@ -347,14 +348,14 @@ export default function QuestionBank() {
       id: q.id,
       category: q.category,
       type: q.type,
-      passage: q.content.passage || '',
-      title: q.content.textHtml || q.content.text || q.content.title || '',
+      passage: content.passage || '',
+      title: content.textHtml || content.text || content.title || '',
       options: normalizedOptions,
       correctAnswer:
         q.type === 'FILL_IN_THE_BLANK' || q.type === 'ESSAY'
           ? []
           : (normalizedCorrect.length ? normalizedCorrect : ['']),
-      imageUrl: q.content.imageUrl || '',
+      imageUrl: content.imageUrl || '',
       isMdEnabled: true,
       parentId: q.parentId || null
     });
