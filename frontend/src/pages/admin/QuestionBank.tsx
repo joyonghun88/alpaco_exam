@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Trash2, Database, BookOpen, RefreshCcw, ChevronLeft, ChevronRight, LayoutGrid, Layers, Edit3, Save, CheckCircle2, Type, ListChecks, HelpCircle, AlignLeft, PlusCircle, MinusCircle, ArrowLeft, Target } from 'lucide-react';
 import '@toast-ui/editor/dist/toastui-editor.css';
+import '@toast-ui/editor/dist/i18n/ko-kr';
 import { Editor } from '@toast-ui/react-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -625,18 +626,18 @@ export default function QuestionBank() {
                                onChange={e=>setEditorForm({...editorForm, parentId: e.target.value})}
                                className="w-full bg-white border-2 border-primary/50 rounded-2xl py-4 px-6 font-bold outline-none shadow-sm focus:border-primary transition-all"
                              >
-                                {questions.filter(q => q.category === editorForm.category && q.id !== editorForm.id && q.content.passage).map(q => (
-                                   <option key={q.id} value={q.id}>[{q.type}] {q.content.title.substring(0, 40)}...</option>
-                                ))}
-                             </select>
+                                 {questions.filter(q => q.category === editorForm.category && q.id !== editorForm.id && q.content?.passage).map(q => (
+                                    <option key={q.id} value={q.id}>[{q.type}] {String(q.content?.title || q.content?.text || '').substring(0, 40)}...</option>
+                                 ))}
+                              </select>
                              <div className="p-6 bg-primary/5 rounded-2xl border border-primary/20">
                                 <p className="text-xs font-black text-primary uppercase mb-2">연계 지문 미리보기</p>
                                 <p className="text-sm text-text-title font-medium leading-relaxed italic line-clamp-3">
-                                   {questions.find(q => q.id === editorForm.parentId)?.content.passage}
-                                </p>
-                             </div>
-                          </div>
-                       )}
+                                   {questions.find(q => q.id === editorForm.parentId)?.content?.passage}
+                                 </p>
+                              </div>
+                           </div>
+                        )}
                     </div>
 
                     <div className="bg-white p-8 rounded-[2.5rem] border-2 border-button-outline shadow-sm">
@@ -651,7 +652,7 @@ export default function QuestionBank() {
                            initialEditType="wysiwyg"
                            hideModeSwitch={true}
                            onChange={handleQuestionChange}
-                           toolbarItems={[['bold', 'italic', 'underline', 'strike'], ['hr', 'quote'], ['ul', 'ol'], ['link']]}
+                            toolbarItems={[['bold', 'italic', 'underline', 'strike'], ['ul', 'ol'], ['link']]}
                          />
                        </div>
                        {stripHtmlTags(editorForm.title).length === 0 && (
@@ -680,8 +681,8 @@ export default function QuestionBank() {
                                       return false;
                                    }
                                 }}
-                                toolbarItems={[['heading', 'bold', 'italic', 'strike'], ['hr', 'quote'], ['ul', 'ol', 'task', 'indent', 'outdent'], ['table', 'image', 'link'], ['code', 'codeblock'], ['scrollSync']]}
-                             />
+                                 toolbarItems={[['heading', 'bold', 'italic', 'strike'], ['hr', 'quote'], ['ul', 'ol', 'task'], ['table', 'image', 'link'], ['code', 'codeblock']]}
+                              />
                           </div>
                        </div>
                     )}
