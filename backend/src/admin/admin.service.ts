@@ -473,7 +473,16 @@ export class AdminService {
       }
     }
 
-    return { success: true, count: participants.length, results };
+    const failedCount = results.filter((r) => r.status === 'FAILED').length;
+    const successCount = results.filter((r) => r.status === 'SUCCESS').length;
+
+    return {
+      success: failedCount === 0,
+      count: participants.length,
+      successCount,
+      failedCount,
+      results,
+    };
   }
 
   async sendBulkInvitations(roomId: string, template: string) {
@@ -503,7 +512,16 @@ export class AdminService {
       }
     }
 
-    return { success: true, count: participants.length, results };
+    const failedCount = results.filter((r) => r.status === 'FAILED').length;
+    const successCount = results.filter((r) => r.status === 'SUCCESS').length;
+
+    return {
+      success: failedCount === 0,
+      count: participants.length,
+      successCount,
+      failedCount,
+      results,
+    };
   }
   // 5. 怨좎궗?占쎈퀎 ?占쎌빟 ?占쎄퀎 議고쉶 (?占?占쎈낫??珥덇린 ?占쎈㈃??
   async getRoomSummary() {

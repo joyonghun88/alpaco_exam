@@ -308,15 +308,52 @@ export default function QuestionBank() {
     return null;
   };
 
+  const normalizeStringArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.map((v) => String(v));
+    if (value === null || value === undefined) return [];
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) return [];
+      if (trimmed.includes(',')) return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      return [trimmed];
+    }
+    return [String(value)];
+  };
+
+  const normalizeOptionsForEdit = (q: Question): string[] => {
+    const contentOptions = (q as any)?.content?.options;
+    if (Array.isArray(contentOptions)) return contentOptions.map((v: any) => String(v));
+
+    if (q.type === 'MULTIPLE_CHOICE') {
+      const base = normalizeStringArray(contentOptions);
+      const filled = [...base];
+      while (filled.length < 4) filled.push(`옵션 ${filled.length + 1}`);
+      return filled;
+    }
+
+    if (q.type === 'FILL_IN_THE_BLANK') {
+      const fromCorrect = normalizeStringArray((q as any)?.correctAnswer);
+      return fromCorrect.length ? fromCorrect : ['정답 1'];
+    }
+
+    return ['옵션 1'];
+  };
+
   const handleEdit = (q: Question) => {
+    const normalizedOptions = normalizeOptionsForEdit(q);
+    const normalizedCorrect = normalizeStringArray((q as any)?.correctAnswer);
+
     setEditorForm({
       id: q.id,
       category: q.category,
       type: q.type,
       passage: q.content.passage || '',
       title: q.content.textHtml || q.content.text || q.content.title || '',
-      options: q.content.options || (q.type === 'FILL_IN_THE_BLANK' ? q.correctAnswer : ['옵션 1']),
-      correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer.map(v => String(v)) : [String(q.correctAnswer)],
+      options: normalizedOptions,
+      correctAnswer:
+        q.type === 'FILL_IN_THE_BLANK' || q.type === 'ESSAY'
+          ? []
+          : (normalizedCorrect.length ? normalizedCorrect : ['']),
       imageUrl: q.content.imageUrl || '',
       isMdEnabled: true,
       parentId: q.parentId || null

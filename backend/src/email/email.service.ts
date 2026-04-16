@@ -8,6 +8,13 @@ export class EmailService {
   private readonly senderEmail = process.env.SES_SENDER_EMAIL || 'support@alpaco.io';
 
   constructor() {
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      console.warn('[EmailService] Missing AWS credentials env (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY). SES sending will fail.');
+    }
+    if (!process.env.SES_SENDER_EMAIL) {
+      console.warn(`[EmailService] Missing SES_SENDER_EMAIL env. Falling back to ${this.senderEmail}. Ensure this identity is verified in SES.`);
+    }
+
     const sesClient = new SESClient({
       region: process.env.AWS_REGION || 'ap-northeast-2',
       credentials: {
@@ -33,7 +40,10 @@ export class EmailService {
       console.log(`[EmailService] Email sent to ${to}: ${info.messageId}`);
       return info;
     } catch (error) {
-      console.error(`[EmailService] Failed to send email to ${to}`, error);
+      console.error(
+        `[EmailService] Failed to send email to ${to} (from=${this.senderEmail}, region=${process.env.AWS_REGION || 'ap-northeast-2'})`,
+        error
+      );
       throw error;
     }
   }
