@@ -5,6 +5,7 @@ import { Editor } from '@toast-ui/react-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { API_BASE_URL } from '../../config';
+import { sanitizeBasicHtml, stripHtmlTags } from '../../utils/html';
 
 interface Question {
   id: string; category: string; type: string; content: any; correctAnswer: any; createdAt: string; parentId?: string; parent?: Question;
@@ -48,6 +49,7 @@ export default function QuestionBank() {
     parentId: null as string | null
   });
   const editorRef = useRef<any>(null);
+  const questionEditorRef = useRef<any>(null);
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -194,8 +196,13 @@ export default function QuestionBank() {
   };
 
   const handleSaveQuestion = async () => {
+    const questionHtml = sanitizeBasicHtml(editorForm.title || '');
+    const questionText = stripHtmlTags(questionHtml);
+
     let finalContent: any = { 
-      title: editorForm.title,
+      title: questionText,
+      text: questionText,
+      textHtml: questionHtml,
       passage: editorForm.passage,
       imageUrl: editorForm.imageUrl,
     };
@@ -238,6 +245,23 @@ export default function QuestionBank() {
     }
   };
 
+  const handleQuestionChange = () => {
+    if (questionEditorRef.current) {
+      const html = questionEditorRef.current.getInstance().getHTML();
+      setEditorForm((prev) => ({ ...prev, title: html }));
+    }
+  };
+
+  useEffect(() => {
+    if (view !== 'EDITOR') return;
+    if (!questionEditorRef.current) return;
+
+    try {
+      questionEditorRef.current.getInstance().setHTML(editorForm.title || '');
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, editorForm.id]);
+
   const resetEditor = () => {
     setEditorForm({ 
       id: null, passage: '', title: '', imageUrl: '', isMdEnabled: true,
@@ -249,9 +273,23 @@ export default function QuestionBank() {
     });
   };
 
-  const uploadImage = async (file: File) => {
+  const uploadImage = async (blob: Blob | File) => {
     const formData = new FormData();
-    formData.append('file', file);
+
+    const type = (blob as any)?.type || '';
+    const extFromType =
+      type === 'image/jpeg' ? 'jpg' :
+      type === 'image/png' ? 'png' :
+      type === 'image/gif' ? 'gif' :
+      type === 'image/webp' ? 'webp' :
+      'png';
+
+    const filename =
+      blob instanceof File && blob.name
+        ? blob.name
+        : `image.${extFromType}`;
+
+    formData.append('file', blob, filename);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/questions/upload`, {
         method: 'POST',
@@ -260,7 +298,8 @@ export default function QuestionBank() {
       });
       if (res.ok) {
         const data = await res.json();
-        const url = data.url.startsWith('http') ? data.url : `${API_BASE_URL}${data.url}`;
+        const origin = new URL(API_BASE_URL, window.location.origin).origin;
+        const url = data.url.startsWith('http') ? data.url : `${origin}${data.url}`;
         return url;
       }
     } catch {
@@ -275,7 +314,7 @@ export default function QuestionBank() {
       category: q.category,
       type: q.type,
       passage: q.content.passage || '',
-      title: q.content.title || '',
+      title: q.content.textHtml || q.content.text || q.content.title || '',
       options: q.content.options || (q.type === 'FILL_IN_THE_BLANK' ? q.correctAnswer : ['옵션 1']),
       correctAnswer: Array.isArray(q.correctAnswer) ? q.correctAnswer.map(v => String(v)) : [String(q.correctAnswer)],
       imageUrl: q.content.imageUrl || '',
@@ -564,7 +603,22 @@ export default function QuestionBank() {
 
                     <div className="bg-white p-8 rounded-[2.5rem] border-2 border-button-outline shadow-sm">
                        <label className="text-xs font-black text-primary uppercase mb-4 block">1. 질문 (Question)</label>
-                       <textarea value={editorForm.title} onChange={e=>setEditorForm({...editorForm, title: e.target.value})} className="w-full bg-transparent border-none outline-none text-2xl font-black placeholder-atomic-gray-200 min-h-[100px]" placeholder="질문 내용을 입력하세요" />
+                       <div className="rounded-2xl overflow-hidden border border-button-outline bg-white">
+                         <Editor
+                           ref={questionEditorRef}
+                           key={`qtext-${editorForm.id ?? 'new'}`}
+                           initialValue=""
+                           previewStyle="tab"
+                           height="220px"
+                           initialEditType="wysiwyg"
+                           hideModeSwitch={true}
+                           onChange={handleQuestionChange}
+                           toolbarItems={[['bold', 'italic', 'underline', 'strike'], ['hr', 'quote'], ['ul', 'ol'], ['link']]}
+                         />
+                       </div>
+                       {stripHtmlTags(editorForm.title).length === 0 && (
+                         <p className="text-xs text-text-caption font-bold mt-3">질문 내용을 입력해주세요.</p>
+                       )}
                     </div>
 
                     {!editorForm.parentId && (
@@ -583,7 +637,7 @@ export default function QuestionBank() {
                                 onChange={handleEditorChange}
                                 hooks={{
                                    addImageBlobHook: async (blob: Blob | File, callback: (url: string, alt?: string) => void) => {
-                                      const url = await uploadImage(blob as File);
+                                      const url = await uploadImage(blob);
                                       if (url) callback(url, 'image');
                                       return false;
                                    }
@@ -665,7 +719,14 @@ export default function QuestionBank() {
                           <div className="space-y-10">
                              <div className="flex items-start space-x-4">
                                 <div className="mt-1 px-3 py-1 bg-text-title text-white text-[10px] font-black rounded-lg">QUESTION</div>
-                                <h4 className="text-2xl font-black text-text-title leading-tight whitespace-pre-wrap">{editorForm.title || '내용이 없습니다.'}</h4>
+                                {stripHtmlTags(editorForm.title).length > 0 ? (
+                                  <div
+                                    className="text-2xl font-black text-text-title leading-tight [&_p]:m-0 [&_u]:underline [&_strong]:font-black [&_em]:italic"
+                                    dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(editorForm.title) }}
+                                  />
+                                ) : (
+                                  <h4 className="text-2xl font-black text-text-title leading-tight whitespace-pre-wrap">내용이 없습니다.</h4>
+                                )}
                              </div>
                              {(() => {
                                 const actualPassage = editorForm.parentId 

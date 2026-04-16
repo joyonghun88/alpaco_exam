@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { SignalingClient, Role } from 'amazon-kinesis-video-streams-webrtc';
 import { API_BASE_URL, SOCKET_URL } from '../../config';
+import { sanitizeBasicHtml } from '../../utils/html';
 
 interface Question {
   id: string;
@@ -589,9 +590,16 @@ export default function Sandbox() {
                        <span className="text-xs font-bold text-atomic-gray-400">배점 {currentQ.point}pt</span>
                     </div>
 
-                    <h2 className="text-3xl font-black text-white leading-tight mb-12">
-                       {currentQ.content.text}
-                    </h2>
+                    {currentQ.content.textHtml ? (
+                      <div
+                        className="text-3xl font-black text-white leading-tight mb-12 [&_p]:m-0 [&_p]:leading-tight [&_u]:underline [&_strong]:font-black [&_em]:italic"
+                        dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(currentQ.content.textHtml) }}
+                      />
+                    ) : (
+                      <h2 className="text-3xl font-black text-white leading-tight mb-12">
+                        {currentQ.content.text}
+                      </h2>
+                    )}
 
                     <div className="space-y-4 mb-24">
                        {/* 객관식 (MULTIPLE_CHOICE) */}
