@@ -10,7 +10,7 @@ import { sanitizeBasicHtml } from '../../utils/html';
 interface Question {
   id: string;
   type: string;
-  content: { text: string, options: string[], passage?: string };
+  content: { text: string; textHtml?: string; options: string[]; passage?: string };
   orderNum: number;
   point: number;
 }
