@@ -34,13 +34,13 @@ export default function Participants() {
   
   const [showBulkInvite, setShowBulkInvite] = useState(false);
   const [inviteTargetIds, setInviteTargetIds] = useState<string[] | null>(null);
-  const [emailTemplate, setEmailTemplate] = useState(`?덈뀞?섏꽭?? {{name}}??
-?됯? [{{room}}]??珥덈??섏뀲?듬땲??
+  const [emailTemplate, setEmailTemplate] = useState(`안녕하세요 {{name}}님
+아래 [{{room}}] 방에 배정되었습니다.
 
-- 珥덈? 肄붾뱶: {{code}}
-- ?묒냽 留곹겕: {{link}}
+- 초대 코드: {{code}}
+- 접속 링크: {{link}}
 
-媛먯궗?⑸땲??`);
+감사합니다.`);
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -66,7 +66,7 @@ export default function Participants() {
 
   const handleAdd = async (e: any) => {
     e.preventDefault();
-    if (!name || !email || !targetRoomId) return alert('?뺣낫瑜?紐⑤몢 ?낅젰?섏꽭??');
+    if (!name || !email || !targetRoomId) return alert('이름/이메일/평가방을 모두 입력해주세요.');
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants`, {
         method: 'POST',
@@ -80,18 +80,18 @@ export default function Participants() {
   };
 
   const handleBulkAdd = async () => {
-    if (!bulkText || !targetRoomId) return alert('?곗씠?곗? ???怨좎궗?μ쓣 ?좏깮?섏꽭??');
+    if (!bulkText || !targetRoomId) return alert('CSV 텍스트와 평가방을 선택해주세요.');
     
     const lines = bulkText.split('\n').map(l => l.trim()).filter(l => l.includes(',') && l.length > 5);
     const ps = lines.map(l => {
       const parts = l.split(',');
       return { 
-        name: parts[0]?.trim() || '?대쫫?놁쓬', 
+        name: parts[0]?.trim() || '이름없음', 
         email: parts[1]?.trim() || 'no-email@example.com' 
       };
     }).filter(p => p.email.includes('@')); // 理쒖냼???대찓???뺤떇??媛뽰텣 寃껊쭔
 
-    if (ps.length === 0) return alert('?좏슚???곗씠?곌? ?놁뒿?덈떎. [?대쫫, ?대찓?? ?뺤떇???뺤씤?섏꽭??');
+    if (ps.length === 0) return alert('유효한 데이터가 없습니다. [이름, 이메일] 형식으로 입력해주세요.');
 
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants/bulk`, {
@@ -101,18 +101,18 @@ export default function Participants() {
       });
       if (res.ok) {
         setBulkText(''); setShowBulk(false); fetchData();
-        alert(`${ps.length}紐낆씠 ?깅줉?섏뿀?듬땲??`);
+        alert(`${ps.length}명 등록되었습니다.`);
       } else {
         const err = await res.json();
-        alert(`?깅줉 ?ㅽ뙣: ${err.message || '?쒕쾭 ?ㅻ쪟'}`);
+        alert(`등록 실패: ${err.message || '알 수 없는 오류'}`);
       }
     } catch {
-      alert('?쒕쾭? ?묐떟?????놁뒿?덈떎.');
+      alert('등록 중 오류가 발생했습니다.');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴?')) return;
+    if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
       const res = await fetch(`${API_BASE_URL}/admin/participants/${id}`, { 
         method: 'DELETE',
@@ -134,10 +134,10 @@ export default function Participants() {
 
   const handleDownloadTemplate = () => {
     const csvContent = 
-      "?대쫫,?대찓??n" +
-      "?띻만??hong@example.com\n" +
-      "源?뚰뙆,kim@alpaco.io\n" +
-      "諛뺣뵒吏??park@dx.com";
+      "이름,이메일\n" +
+      "홍길동,hong@example.com\n" +
+      "김철수,kim@alpaco.io\n" +
+      "박영희,park@dx.com";
     
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
