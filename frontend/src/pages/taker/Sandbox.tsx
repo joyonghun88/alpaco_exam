@@ -10,7 +10,7 @@ import { sanitizeBasicHtml } from '../../utils/html';
 interface Question {
   id: string;
   type: string;
-  content: { text: string; textHtml?: string; options: string[]; passage?: string };
+  content: { text?: string; textHtml?: string; title?: string; options?: string[]; passage?: string } | any;
   orderNum: number;
   point: number;
 }
@@ -566,22 +566,22 @@ export default function Sandbox() {
 
            <div className="flex-1 flex overflow-hidden">
               {/* [좌측] 연계 지문 영역 (있는 경우에만 표시) */}
-              {currentQ.content.passage && (
-                <section className="flex-1 border-r border-atomic-navy-600 bg-black/20 overflow-y-auto p-12 scroll-smooth leading-relaxed">
+               {currentQ?.content?.passage && (
+                 <section className="flex-1 border-r border-atomic-navy-600 bg-black/20 overflow-y-auto p-12 scroll-smooth leading-relaxed">
                    <div className="max-w-3xl mx-auto space-y-8">
                       <div className="flex items-center space-x-3 text-ai-accent opacity-60">
                          <Columns size={18} />
                          <span className="text-xs font-black uppercase tracking-widest">Question Passage</span>
                       </div>
                       <div className="prose prose-invert prose-lg max-w-none text-atomic-gray-100 font-medium leading-[2] md-preview">
-                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{currentQ.content.passage}</ReactMarkdown>
-                      </div>
-                   </div>
-                </section>
-              )}
+                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{String(currentQ?.content?.passage || '')}</ReactMarkdown>
+                       </div>
+                    </div>
+                 </section>
+               )}
 
               {/* [우측] 문제 영역 */}
-              <section className={`flex-1 overflow-y-auto p-12 scroll-smooth ${currentQ.content.passage ? 'bg-black/5' : ''}`}>
+               <section className={`flex-1 overflow-y-auto p-12 scroll-smooth ${currentQ?.content?.passage ? 'bg-black/5' : ''}`}>
                  <div className="max-w-3xl mx-auto">
                     <div className="flex items-center space-x-3 mb-12">
                        <span className="px-5 py-2 bg-primary/10 border border-primary/20 text-primary rounded-2xl text-sm font-black uppercase tracking-tighter">
@@ -590,25 +590,35 @@ export default function Sandbox() {
                        <span className="text-xs font-bold text-atomic-gray-400">배점 {currentQ.point}pt</span>
                     </div>
 
-                    {currentQ.content.textHtml ? (
-                      <div
-                        className="text-3xl font-black text-white leading-tight mb-12 [&_p]:m-0 [&_p]:leading-tight [&_u]:underline [&_strong]:font-black [&_em]:italic"
-                        dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(currentQ.content.textHtml) }}
-                      />
-                    ) : (
-                      <h2 className="text-3xl font-black text-white leading-tight mb-12">
-                        {currentQ.content.text}
-                      </h2>
-                    )}
+                     {(() => {
+                       const content: any = currentQ?.content || {};
+                       const html = content.textHtml;
+                       const text = content.text ?? content.title ?? '';
 
-                    <div className="space-y-4 mb-24">
-                       {/* 객관식 (MULTIPLE_CHOICE) */}
-                       {currentQ.type === 'MULTIPLE_CHOICE' && currentQ.content.options.map((opt, idx) => {
-                          const isSelected = answers[currentQ.id] === idx;
-                          return (
-                            <button 
-                              key={idx}
-                              onClick={() => handleOptionSelect(currentQ.id, idx)}
+                       if (html && String(html).trim().length > 0) {
+                         return (
+                           <div
+                             className="text-3xl font-black text-white leading-tight mb-12 [&_p]:m-0 [&_p]:leading-tight [&_u]:underline [&_strong]:font-black [&_em]:italic"
+                             dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(String(html)) }}
+                           />
+                         );
+                       }
+
+                       return (
+                         <h2 className="text-3xl font-black text-white leading-tight mb-12 whitespace-pre-wrap">
+                           {String(text)}
+                         </h2>
+                       );
+                     })()}
+
+                     <div className="space-y-4 mb-24">
+                        {/* 객관식 (MULTIPLE_CHOICE) */}
+                        {currentQ.type === 'MULTIPLE_CHOICE' && (currentQ?.content?.options || []).map((opt: any, idx: number) => {
+                           const isSelected = answers[currentQ.id] === idx;
+                           return (
+                             <button 
+                                key={idx}
+                                onClick={() => handleOptionSelect(currentQ.id, idx)}
                               className={`
                                 w-full text-left p-8 rounded-3xl border-2 flex items-center space-x-6 transition-all group
                                 ${isSelected 
@@ -621,12 +631,12 @@ export default function Sandbox() {
                                `}>
                                   <span className="text-xs font-black">{idx + 1}</span>
                                </div>
-                               <span className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-atomic-gray-300'}`}>
-                                  {opt}
-                                </span>
-                            </button>
-                          );
-                       })}
+                                <span className={`text-xl font-bold ${isSelected ? 'text-white' : 'text-atomic-gray-300'} whitespace-pre-wrap`}>
+                                   {String(opt)}
+                                 </span>
+                             </button>
+                           );
+                        })}
 
                        {/* 주관식 (ESSAY) */}
                        {currentQ.type === 'ESSAY' && (
