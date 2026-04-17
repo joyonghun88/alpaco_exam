@@ -643,17 +643,16 @@ export default function QuestionBank() {
                     <div className="bg-white p-8 rounded-[2.5rem] border-2 border-button-outline shadow-sm">
                        <label className="text-xs font-black text-primary uppercase mb-4 block">1. 질문 (Question)</label>
                        <div className="rounded-2xl overflow-hidden border border-button-outline bg-white">
-                         <Editor
-                           ref={questionEditorRef}
-                           key={`qtext-${editorForm.id ?? 'new'}`}
-                           initialValue=""
-                           previewStyle="tab"
-                           height="220px"
-                           initialEditType="wysiwyg"
-                           hideModeSwitch={true}
-                           onChange={handleQuestionChange}
-                            toolbarItems={[['bold', 'italic', 'underline', 'strike'], ['ul', 'ol'], ['link']]}
-                         />
+                          <Editor
+                            ref={questionEditorRef}
+                            key={`qtext-${editorForm.id ?? 'new'}`}
+                            initialValue=""
+                            previewStyle="tab"
+                            height="220px"
+                            initialEditType="wysiwyg"
+                            hideModeSwitch={true}
+                            onChange={handleQuestionChange}
+                          />
                        </div>
                        {stripHtmlTags(editorForm.title).length === 0 && (
                          <p className="text-xs text-text-caption font-bold mt-3">질문 내용을 입력해주세요.</p>
@@ -666,22 +665,21 @@ export default function QuestionBank() {
                              <label className="text-xs font-black text-text-caption uppercase pl-2">2. 지문 및 자료 (Professional Markdown Editor)</label>
                           </div>
                           <div className="p-2">
-                             <Editor
-                                ref={editorRef}
-                                initialValue={editorForm.passage}
-                                previewStyle="vertical"
-                                height="500px"
-                                initialEditType="markdown"
-                                language="ko-KR"
-                                onChange={handleEditorChange}
-                                hooks={{
-                                   addImageBlobHook: async (blob: Blob | File, callback: (url: string, alt?: string) => void) => {
-                                      const url = await uploadImage(blob);
-                                      if (url) callback(url, 'image');
-                                      return false;
-                                   }
-                                }}
-                                 toolbarItems={[['heading', 'bold', 'italic', 'strike'], ['hr', 'quote'], ['ul', 'ol', 'task'], ['table', 'image', 'link'], ['code', 'codeblock']]}
+                              <Editor
+                                 ref={editorRef}
+                                 initialValue={editorForm.passage}
+                                 previewStyle="vertical"
+                                 height="500px"
+                                 initialEditType="markdown"
+                                 language="ko-KR"
+                                 onChange={handleEditorChange}
+                                 hooks={{
+                                    addImageBlobHook: async (blob: Blob | File, callback: (url: string, alt?: string) => void) => {
+                                       const url = await uploadImage(blob);
+                                       if (url) callback(url, 'image');
+                                       return false;
+                                    }
+                                 }}
                               />
                           </div>
                        </div>
