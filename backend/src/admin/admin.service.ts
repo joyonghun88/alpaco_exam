@@ -452,7 +452,7 @@ export class AdminService {
       const frontendUrl = this.getFrontendUrl();
       const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
 
-      const subject = `[Alpaco Exam] ${p.room.roomName} 占쏙옙占쏙옙 占십댐옙 占싫놂옙`;
+      const subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
       const contentText = templateText
         ? templateText
             .replace(/{{name}}/g, p.name)
@@ -496,7 +496,7 @@ export class AdminService {
       const frontendUrl = this.getFrontendUrl();
       const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
       
-      let subject = `[Alpaco Exam] ${p.room.roomName} ?占쏀뿕 珥덌옙? ?占쎈궡`;
+      let subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
       let content = template
         .replace(/{{name}}/g, p.name)
         .replace(/{{room}}/g, p.room.roomName)
