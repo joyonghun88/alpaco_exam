@@ -394,9 +394,14 @@ export default function Sandbox() {
          </div>
          <h1 className="text-4xl font-black mb-4">평가가 정상적으로 제출되었습니다.</h1>
          <p className="text-atomic-gray-400 text-lg mb-8">모든 응시 데이터와 모니터링 로그가 안전하게 저장되었습니다.<br/>브라우저 창을 닫고 퇴실해 주세요.</p>
-         <button onClick={() => window.close()} className="px-10 py-4 bg-bg-section border border-button-outline rounded-2xl font-black hover:bg-atomic-navy-700 transition-all">나가기</button>
-       </div>
-     );
+        <button
+          onClick={() => window.close()}
+          className="px-10 py-4 bg-bg-section text-text-title border border-button-outline rounded-2xl font-black hover:bg-white transition-all"
+        >
+          나가기
+        </button>
+      </div>
+    );
   }
 
   // 5. 로딩 UI
