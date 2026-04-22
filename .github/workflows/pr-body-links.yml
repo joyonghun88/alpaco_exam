@@ -1,0 +1,23 @@
+name: PR body requires Spec/Task links
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  require-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.pull_request.body || "").trim();
+            const hasSpec = /^\s*-\s*Spec\s*:\s*https?:\/\//im.test(body) || /^\s*Spec\s*:\s*https?:\/\//im.test(body);
+            const hasTask = /^\s*-\s*Task\s*:\s*https?:\/\//im.test(body) || /^\s*Task\s*:\s*https?:\/\//im.test(body);
+            if (!hasSpec || !hasTask) {
+              core.setFailed("PR description must include:\n- Spec: <url>\n- Task: <url>");
+            }
+
