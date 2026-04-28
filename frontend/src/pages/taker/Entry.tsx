@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, MonitorPlay, AlertTriangle, ArrowRight, Video, VideoOff, Camera, CheckCircle2, Settings, Globe, X } from 'lucide-react';
 import { API_BASE_URL } from '../../config';
@@ -19,7 +19,7 @@ export default function Entry() {
     retention: false,
   });
   
-  // 환경 점검 상태
+  // ?섍꼍 ?먭? ?곹깭
   const [hasCameraPermission, setHasCameraPermission] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   
@@ -28,6 +28,7 @@ export default function Entry() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const [searchParams] = useSearchParams();
+  const systemReady = !isRequireCamera || hasCameraPermission;
 
   useEffect(() => {
     const codeInUrl = searchParams.get('code');
@@ -43,7 +44,6 @@ export default function Entry() {
       const diff = new Date(waitingStartTime).getTime() - Date.now();
       if (diff <= 0) {
         setWaitingStartTime(null);
-        return;
       }
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -53,7 +53,7 @@ export default function Entry() {
     return () => clearInterval(interval);
   }, [waitingStartTime]);
 
-  // 시스템 환경 점검 (캠 전용)
+  // ?쒖뒪???섍꼍 ?먭? (罹??꾩슜)
   const startSystemCheck = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
@@ -67,7 +67,7 @@ export default function Entry() {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
-      alert('카메라 권한을 승인해야 입장이 가능합니다. 브라우저 주소창 왼쪽의 자물쇠 아이콘을 눌러 권한을 허용해 주세요.');
+      alert('移대찓??沅뚰븳???뱀씤?댁빞 ?낆옣??媛?ν빀?덈떎. 釉뚮씪?곗? 二쇱냼李??쇱そ???먮Ъ???꾩씠肄섏쓣 ?뚮윭 沅뚰븳???덉슜??二쇱꽭??');
       setHasCameraPermission(false);
     }
   };
@@ -85,17 +85,17 @@ export default function Entry() {
     // 1. 기본 유효성 검사
     if ((!isChecked && !forceEnter) || !inviteCode) return;
     
-    // 2. 약관 동의 확인
+    // 2. ?쎄? ?숈쓽 ?뺤씤
     const isReadyForTerms = termsAgreed.privacy && (!isRequireCamera || termsAgreed.camera) && termsAgreed.retention;
     if (!isReadyForTerms) {
        setIsTermsOpen(true);
        return;
     }
 
-    // 3. 카메라 필수 고사장일 경우 장비 점검 확인
+    // 3. 移대찓???꾩닔 怨좎궗?μ씪 寃쎌슦 ?λ퉬 ?먭? ?뺤씤
     if (isRequireCamera && !hasCameraPermission) {
-      alert('환경 점검이 완료되지 않았습니다. 카메라를 활성화해 주세요.');
-      setIsTermsOpen(false); // 모달 닫기 (장비 점검 유도)
+      alert('?섍꼍 ?먭????꾨즺?섏? ?딆븯?듬땲?? 移대찓?쇰? ?쒖꽦?뷀빐 二쇱꽭??');
+      setIsTermsOpen(false); // 紐⑤떖 ?リ린 (?λ퉬 ?먭? ?좊룄)
       return;
     }
 
@@ -121,7 +121,7 @@ export default function Entry() {
           }
           return;
         }
-        alert(`인증 실패: ${data.message || '서버 오류'}`);
+        alert(`?몄쬆 ?ㅽ뙣: ${data.message || '?쒕쾭 ?ㅻ쪟'}`);
         return;
       }
       
@@ -130,10 +130,17 @@ export default function Entry() {
       setStandardTerms(data.examRoom.standardTerms || '');
       setCameraTerms(data.examRoom.cameraTerms || '');
 
-      if (requireCam && !hasCameraPermission) {
-        setIsTermsOpen(false);
-        alert('이 고사장은 카메라 모니터링이 필수입니다. 환경 점검을 진행해 주세요.');
-        return;
+      if (requireCam) {
+        if (!termsAgreed.camera) {
+          setIsTermsOpen(true);
+          if (!hasCameraPermission) startSystemCheck();
+          return;
+        }
+        if (!hasCameraPermission) {
+          setIsTermsOpen(true);
+          startSystemCheck();
+          return;
+        }
       }
 
       sessionStorage.setItem('participantId', data.participantId);
@@ -149,7 +156,7 @@ export default function Entry() {
       } catch (e) {}
       navigate('/exam/sandbox');
     } catch (e) {
-      alert('서버와 연결할 수 없습니다.');
+      alert('?쒕쾭? ?곌껐?????놁뒿?덈떎.');
     }
   };
 
@@ -166,7 +173,7 @@ export default function Entry() {
 
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-12 z-10 items-stretch">
         
-        {/* 설명 영역 */}
+        {/* ?ㅻ챸 ?곸뿭 */}
         <div className="lg:col-span-12 xl:col-span-5 flex flex-col justify-center space-y-8">
           <div>
             <div className="inline-flex text-4xl font-black tracking-widest text-primary-strong uppercase mb-2">
@@ -181,12 +188,12 @@ export default function Entry() {
               <span>IBT SECURITY CENTER</span>
             </div>
             <h1 className="text-hero text-text-title leading-tight">
-              AI 샌드박스<br/>
-              <span className="text-primary-strong">환경 점검 대기실</span>
+              AI ?뚮뱶諛뺤뒪<br/>
+              <span className="text-primary-strong">?섍꼍 ?먭? ?湲곗떎</span>
             </h1>
             <p className="text-text-body text-body-reading leading-relaxed opacity-80">
-              시험 입장 전 카메라 상태를 확인해 주세요. <br/>
-              실시간 모니터링 시스템은 시험 중 수험생의 이탈 및 부정행위를 감지하며, 전 과정이 녹화됩니다.
+              ?쒗뿕 ?낆옣 ??移대찓???곹깭瑜??뺤씤??二쇱꽭?? <br/>
+              ?ㅼ떆媛?紐⑤땲?곕쭅 ?쒖뒪?쒖? ?쒗뿕 以??섑뿕?앹쓽 ?댄깉 諛?遺?뺥뻾?꾨? 媛먯??섎ŉ, ??怨쇱젙???뱁솕?⑸땲??
             </p>
           </div>
 
@@ -204,16 +211,16 @@ export default function Entry() {
           </div>
         </div>
 
-        {/* 점검 카드 영역 */}
+        {/* ?먭? 移대뱶 ?곸뿭 */}
         <div className="lg:col-span-12 xl:col-span-7 flex flex-col justify-center">
           <div className="bg-white rounded-[3rem] p-10 shadow-2xl border border-atomic-gray-300/20 relative overflow-hidden">
-             {/* 상태 상단 헤더 */}
+             {/* ?곹깭 ?곷떒 ?ㅻ뜑 */}
             <div className="flex justify-between items-center mb-8 border-b border-atomic-gray-50 pb-6">
-               <h3 className="text-2xl font-black text-text-title flex items-center space-x-3">
-                 <MonitorPlay className="text-primary" size={28} />
-                 <span>검증 및 대기</span>
-               </h3>
-               {hasCameraPermission && (
+                <h3 className="text-2xl font-black text-text-title flex items-center space-x-3">
+                  <MonitorPlay className="text-primary" size={28} />
+                  <span>환경 점검</span>
+                </h3>
+               {systemReady && (
                   <div className="flex items-center space-x-2 bg-green-50 text-green-600 px-4 py-1.5 rounded-full text-xs font-black border border-green-200">
                      <CheckCircle2 size={14} />
                      <span>SYSTEM READY</span>
@@ -222,48 +229,70 @@ export default function Entry() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-               {/* 왼쪽: 캠 미리보기 */}
+               {/* 왼쪽: 카메라(선택/필수) */}
                <div className="space-y-4">
-                  <div className="relative aspect-[4/3] bg-black rounded-[2rem] overflow-hidden border-2 border-primary/20 shadow-xl group">
-                     {!hasCameraPermission ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-bg-section cursor-pointer" onClick={startSystemCheck}>
-                           <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-primary shadow-md group-hover:scale-110 transition-transform">
-                              <Camera size={32} />
-                           </div>
-                           <p className="text-xs font-black text-text-title">카메라 장비 활성화</p>
-                        </div>
-                     ) : (
-                        <>
-                           <video 
-                              ref={videoRef} 
-                              autoPlay 
-                              playsInline 
-                              muted 
-                              className="w-full h-full object-cover mirror"
-                           />
-                           {/* 캠 가이드 라인 */}
-                           <div className="absolute inset-0 border-[30px] border-black/10 pointer-events-none" />
-                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-64 border-2 border-dashed border-white/40 rounded-full pointer-events-none" />
-                        </>
-                     )}
-                  </div>
+                  {isRequireCamera ? (
+                    <div className="relative aspect-[4/3] bg-black rounded-[2rem] overflow-hidden border-2 border-primary/20 shadow-xl group">
+                       {!hasCameraPermission ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-bg-section cursor-pointer" onClick={startSystemCheck}>
+                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-primary shadow-md group-hover:scale-110 transition-transform">
+                                <Camera size={32} />
+                             </div>
+                             <p className="text-xs font-black text-text-title">카메라를 활성화해 주세요</p>
+                          </div>
+                       ) : (
+                          <>
+                             <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover mirror"
+                             />
+                             <div className="absolute inset-0 border-[30px] border-black/10 pointer-events-none" />
+                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-64 border-2 border-dashed border-white/40 rounded-full pointer-events-none" />
+                          </>
+                       )}
+                    </div>
+                  ) : (
+                    <div className="relative aspect-[4/3] bg-bg-section rounded-[2rem] overflow-hidden border-2 border-button-outline shadow-xl flex flex-col items-center justify-center gap-3">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-text-caption shadow-md">
+                        <VideoOff size={32} />
+                      </div>
+                      <p className="text-xs font-black text-text-title">이 고사장은 카메라 모니터링이 없습니다</p>
+                      <p className="text-[10px] font-bold text-text-caption">카메라 권한 없이도 입장할 수 있어요.</p>
+                    </div>
+                  )}
                   
                   <div className="bg-bg-section p-5 rounded-2xl border border-button-outline flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                         <ShieldCheck size={20} />
-                      </div>
-                      <div>
-                         <p className="text-[11px] font-black text-text-title">AI Proctoring Enabled</p>
-                         <p className="text-[10px] font-bold text-text-caption">본 기능은 개인정보 보호를 위해 음성을 수집하지 않습니다.</p>
-                      </div>
+                      {isRequireCamera ? (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                             <ShieldCheck size={20} />
+                          </div>
+                          <div>
+                             <p className="text-[11px] font-black text-text-title">AI Proctoring Enabled</p>
+                             <p className="text-[10px] font-bold text-text-caption">시험 공정성과 보안을 위해 카메라 모니터링이 진행됩니다.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-text-caption/10 flex items-center justify-center text-text-caption">
+                             <VideoOff size={20} />
+                          </div>
+                          <div>
+                             <p className="text-[11px] font-black text-text-title">Camera Not Required</p>
+                             <p className="text-[10px] font-bold text-text-caption">이 고사장은 카메라 모니터링 없이 진행됩니다.</p>
+                          </div>
+                        </>
+                      )}
                   </div>
                </div>
-
-               {/* 오른쪽: 코드 입력 및 동의 */}
+               {/* ?ㅻⅨ履? 肄붾뱶 ?낅젰 諛??숈쓽 */}
                <div className="flex flex-col justify-between">
                   <div className="space-y-6">
                      <div className="relative">
-                        <label className="block text-xs font-black text-text-caption uppercase mb-3 ml-1">초대 코드 (Invitation)</label>
+                        <label className="block text-xs font-black text-text-caption uppercase mb-3 ml-1">珥덈? 肄붾뱶 (Invitation)</label>
                         <input 
                            type="text" 
                            placeholder="XXXX-XXXX-XXXX"
@@ -284,10 +313,10 @@ export default function Entry() {
 
                      <div className="bg-bg-section/70 rounded-3xl p-6 border-2 border-button-outline space-y-4">
                         <h4 className="text-sm font-black text-primary-strong flex items-center gap-2">
-                           <AlertTriangle size={16} /> 부정행위 방지 서약
+                           <AlertTriangle size={16} /> 遺?뺥뻾??諛⑹? ?쒖빟
                         </h4>
                         <p className="text-text-caption text-xs font-bold leading-relaxed">
-                           시험 중 전체화면 이탈, 캠 가해, 자리 비움 등은 부정행위로 간주되며 즉시 감독관에게 경고 알림이 차단됩니다.
+                           ?쒗뿕 以??꾩껜?붾㈃ ?댄깉, 罹?媛?? ?먮━ 鍮꾩? ?깆? 遺?뺥뻾?꾨줈 媛꾩＜?섎ŉ 利됱떆 媛먮룆愿?먭쾶 寃쎄퀬 ?뚮┝??李⑤떒?⑸땲??
                         </p>
                         <label className="flex items-center space-x-3 bg-white p-4 rounded-2xl border border-button-outline cursor-pointer hover:border-primary transition-all shadow-sm">
                            <input 
@@ -296,8 +325,8 @@ export default function Entry() {
                                onChange={() => setIsChecked(!isChecked)}
                                className="w-5 h-5 text-primary rounded-lg focus:ring-primary border-button-outline"
                            />
-                           <span className="text-xs text-text-title font-black">안내사항 숙지 및 동의함</span>
-                        </label>
+                           <span className="text-xs text-text-title font-black">안내사항 확인 및 동의</span>
+                         </label>
                      </div>
                   </div>
 
@@ -310,7 +339,7 @@ export default function Entry() {
                        onClick={resetState}
                        className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/40 rounded-xl text-[11px] font-black transition-all"
                      >
-                        코드 다시 입력 (취소)
+                        肄붾뱶 ?ㅼ떆 ?낅젰 (痍⑥냼)
                      </button>
                   </div>
                   ) : (
@@ -323,19 +352,19 @@ export default function Entry() {
                         : 'bg-bg-section text-text-caption border-2 border-button-outline cursor-not-allowed'
                      }`}
                   >
-                     <span>{isRequireCamera && !hasCameraPermission ? '장비 점검 필요' : '평가 시작하기'}</span>
+                     <span>{isRequireCamera && !hasCameraPermission ? '?λ퉬 ?먭? ?꾩슂' : '?됯? ?쒖옉?섍린'}</span>
                      <ArrowRight size={24} strokeWidth={3} />
                   </button>
                   )}
                </div>
             </div>
 
-            {/* 하단 점검 리스트 아이콘 */}
-            <div className="flex items-center justify-center space-x-10 pt-4 border-t border-atomic-gray-50">
-               <div className={`flex items-center space-x-2 text-[10px] font-black ${hasCameraPermission ? 'text-primary' : 'text-text-caption'}`}>
-                  {hasCameraPermission ? <Video size={14} /> : <VideoOff size={14} />}
-                  <span>SECURE CAMERA-ONLY FEED</span>
-               </div>
+            {/* ?섎떒 ?먭? 由ъ뒪???꾩씠肄?*/}
+             <div className="flex items-center justify-center space-x-10 pt-4 border-t border-atomic-gray-50">
+                <div className={`flex items-center space-x-2 text-[10px] font-black ${isRequireCamera ? (hasCameraPermission ? 'text-primary' : 'text-text-caption') : 'text-text-caption'}`}>
+                   {isRequireCamera ? (hasCameraPermission ? <Video size={14} /> : <VideoOff size={14} />) : <VideoOff size={14} />}
+                   <span>{isRequireCamera ? 'SECURE CAMERA-ONLY FEED' : 'CAMERA NOT REQUIRED'}</span>
+                </div>
                <div className="flex items-center space-x-2 text-[10px] font-black text-text-caption opacity-40">
                   <div className="w-3 h-3 rounded-full border border-current flex items-center justify-center text-[7px]">/</div>
                   <span>MIC DISABLED</span>
@@ -355,7 +384,7 @@ export default function Entry() {
         }
       `}</style>
 
-      {/* 개인정보 및 보안 동의 모달 */}
+      {/* 媛쒖씤?뺣낫 諛?蹂댁븞 ?숈쓽 紐⑤떖 */}
       {isTermsOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-text-title/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-button-outline">
@@ -363,9 +392,9 @@ export default function Entry() {
                 <div>
                   <div className="flex items-center space-x-3 mb-4">
                      <ShieldCheck size={32} className="text-primary" />
-                     <h2 className="text-3xl font-black text-text-title">개인정보 수집 및 보안 동의</h2>
+                     <h2 className="text-3xl font-black text-text-title">媛쒖씤?뺣낫 ?섏쭛 諛?蹂댁븞 ?숈쓽</h2>
                   </div>
-                  <p className="text-sm text-text-caption font-bold">평가의 공정성과 데이터 보호를 위해 다음 사항에 대한 동의가 필요합니다.</p>
+                  <p className="text-sm text-text-caption font-bold">?됯???怨듭젙?깃낵 ?곗씠??蹂댄샇瑜??꾪빐 ?ㅼ쓬 ?ы빆??????숈쓽媛 ?꾩슂?⑸땲??</p>
                 </div>
                 <button onClick={() => setIsTermsOpen(false)} className="p-2 hover:bg-bg-section rounded-full transition-colors">
                    <X size={24} className="text-text-caption" />
@@ -383,11 +412,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            개인정보 수집 및 이용 동의 (필수)
-                            <span className="ml-2 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded">PIPA 준수</span>
-                         </p>
+                            媛쒖씤?뺣낫 ?섏쭛 諛??댁슜 ?숈쓽 (?꾩닔)
+                             <span className="ml-2 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded">PIPA 준수</span>
+                          </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            {standardTerms || '시험 본인 확인 및 부정행위 방지를 위해 성명, 이메일 정보를 수집합니다. 수집된 정보는 본 평가 목적 이외의 용도로 사용되지 않습니다.'}
+                            {standardTerms || '?쒗뿕 蹂몄씤 ?뺤씤 諛?遺?뺥뻾??諛⑹?瑜??꾪빐 ?깅챸, ?대찓???뺣낫瑜??섏쭛?⑸땲?? ?섏쭛???뺣낫??蹂??됯? 紐⑹쟻 ?댁쇅???⑸룄濡??ъ슜?섏? ?딆뒿?덈떎.'}
                          </p>
                       </div>
                    </label>
@@ -402,11 +431,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            영상 정보(웹카메라) 수집 동의 (필수)
-                            <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">실시간 녹화</span>
+                            ?곸긽 ?뺣낫(?뱀뭅硫붾씪) ?섏쭛 ?숈쓽 (?꾩닔)
+                            <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">?ㅼ떆媛??뱁솕</span>
                          </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            {cameraTerms || '실시간 감독을 위해 시험 중 수험생의 안면 및 주변 환경 영상을 수집 및 저장합니다. 본 시스템은 사생활 보호를 위해 음성(마이크)은 수집하지 않습니다.'}
+                            {cameraTerms || '?ㅼ떆媛?媛먮룆???꾪빐 ?쒗뿕 以??섑뿕?앹쓽 ?덈㈃ 諛?二쇰? ?섍꼍 ?곸긽???섏쭛 諛???ν빀?덈떎. 蹂??쒖뒪?쒖? ?ъ깮??蹂댄샇瑜??꾪빐 ?뚯꽦(留덉씠??? ?섏쭛?섏? ?딆뒿?덈떎.'}
                          </p>
                       </div>
                    </label>
@@ -421,11 +450,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            데이터 보유 기간 및 자동 파기 동의 (필수)
-                            <span className="ml-2 text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded">30일 후 자동 삭제</span>
+                            ?곗씠??蹂댁쑀 湲곌컙 諛??먮룞 ?뚭린 ?숈쓽 (?꾩닔)
+                            <span className="ml-2 text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded">30?????먮룞 ??젣</span>
                          </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            수집된 영상 및 로그는 결과 확정 및 이의 제기 기간 고려를 위해 <strong>시험 종료일로부터 30일간 보관</strong>되며, 이후 시스템에서 자동으로 영구 파기됩니다.
+                            ?섏쭛???곸긽 諛?濡쒓렇??寃곌낵 ?뺤젙 諛??댁쓽 ?쒓린 湲곌컙 怨좊젮瑜??꾪빐 <strong>?쒗뿕 醫낅즺?쇰줈遺??30?쇨컙 蹂닿?</strong>?섎ŉ, ?댄썑 ?쒖뒪?쒖뿉???먮룞?쇰줈 ?곴뎄 ?뚭린?⑸땲??
                          </p>
                       </div>
                    </label>
@@ -437,14 +466,14 @@ export default function Entry() {
                    onClick={() => setIsTermsOpen(false)}
                    className="px-8 py-5 bg-white border border-button-outline text-text-caption rounded-[2rem] font-black text-lg hover:bg-bg-section transition-all"
                 >
-                   취소
+                   痍⑥냼
                 </button>
                 <button 
                    onClick={() => handleStart(true)}
                    className="flex-1 py-5 bg-primary text-white rounded-[2rem] font-black text-lg shadow-xl shadow-primary/20 hover:bg-primary-strong disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                    disabled={!termsAgreed.privacy || (isRequireCamera && !termsAgreed.camera) || !termsAgreed.retention}
                 >
-                   동의 완료 및 입장
+                   ?숈쓽 ?꾨즺 諛??낆옣
                 </button>
              </div>
           </div>
