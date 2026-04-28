@@ -36,14 +36,14 @@ let ExamController = class ExamController {
 exports.ExamController = ExamController;
 __decorate([
     (0, common_1.Get)(':id/questions'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe({ version: '4' }))),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ExamController.prototype, "getQuestions", null);
 __decorate([
     (0, common_1.Post)(':id/submit'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe({ version: '4' }))),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
@@ -51,7 +51,7 @@ __decorate([
 ], ExamController.prototype, "submitExam", null);
 __decorate([
     (0, common_1.Post)(':id/progress'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe({ version: '4' }))),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
@@ -59,7 +59,7 @@ __decorate([
 ], ExamController.prototype, "saveProgress", null);
 __decorate([
     (0, common_1.Get)(':id/kvs-credentials'),
-    __param(0, (0, common_1.Param)('id')),
+    __param(0, (0, common_1.Param)('id', new common_1.ParseUUIDPipe({ version: '4' }))),
     __param(1, (0, common_1.Query)('role')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, String]),
