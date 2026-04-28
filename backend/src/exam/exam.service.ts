@@ -52,7 +52,7 @@ export class ExamService {
       }
     });
 
-    return examQuestions.map(eq => {
+    return examQuestions.map((eq, index) => {
       const q = eq.question as any;
       const content = { ...q.content };
       
@@ -65,7 +65,9 @@ export class ExamService {
         id: q.id,
         type: q.type,
         content,
-        orderNum: eq.orderNum,
+        // Taker UI displays this value directly. Use sequential numbering (1..N)
+        // based on the sorted order to avoid gaps when orderNum has been edited.
+        orderNum: index + 1,
         point: eq.point
       };
     });
