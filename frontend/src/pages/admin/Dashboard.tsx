@@ -10,6 +10,7 @@ interface RoomSummary {
   status: string;
   startAt: string;
   endAt: string;
+  durationMinutes: number;
   stats: { total: number; testing: number; completed: number; violations: number };
   waitingMessage?: string;
   waitingTitle?: string;
@@ -30,6 +31,7 @@ interface Participant {
   id: string; name: string; email: string; roomName: string; status: string;
   isOnline?: boolean;
   startedAt: string | null; violationCount: number;
+  submittedAt?: string | null;
   totalScore: number;
   questionResults: { questionId: string, orderNum: number, point: number, earnedPoint: number, gradingStatus: string }[];
   securityLogs: SecurityLog[];
@@ -533,7 +535,36 @@ export default function AdminDashboard() {
 
     const maxQCount = participants.reduce((max, p) => Math.max(max, p.questionResults.length), 0);
     const qHeaders = Array.from({ length: maxQCount }, (_, i) => [`Q${i + 1}`, `Q${i + 1}_STATUS`]).flat();
-    const headers = ['ID', 'Name', 'Email', 'ProgressStatus', 'TotalScore', ...qHeaders, 'Violations', 'StartedAt'];
+
+    const headers = [
+      'RoomName',
+      'RoomStartAt',
+      'RoomEndAt',
+      'RoomDurationMinutes',
+      'ParticipantID',
+      'Name',
+      'Email',
+      'Status',
+      'Online',
+      'StartedAt',
+      'ExpiresAt',
+      'RemainingSeconds',
+      'SubmittedAt',
+      'TotalScore',
+      ...qHeaders,
+      'Violations',
+    ];
+
+    const roomStartAt = selectedRoom.startAt ? new Date(selectedRoom.startAt) : null;
+    const roomEndAt = selectedRoom.endAt ? new Date(selectedRoom.endAt) : null;
+    const durationMinutes = Number(selectedRoom.durationMinutes || 0);
+
+    const toKstString = (value: any) => {
+      if (!value) return '';
+      const dt = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(dt.getTime())) return '';
+      return dt.toLocaleString('ko-KR');
+    };
 
     const rows = participants.map((p) => {
       const sorted = [...p.questionResults].sort((a, b) => a.orderNum - b.orderNum);
@@ -544,15 +575,38 @@ export default function AdminDashboard() {
         qCells.push(qr?.gradingStatus ?? '');
       }
 
+      const startedAt = p.startedAt ? new Date(p.startedAt) : null;
+      const byDuration =
+        startedAt && durationMinutes > 0
+          ? new Date(startedAt.getTime() + durationMinutes * 60 * 1000)
+          : null;
+      const expiresAt =
+        byDuration && roomEndAt
+          ? (byDuration < roomEndAt ? byDuration : roomEndAt)
+          : (byDuration || roomEndAt);
+
+      const remainingSeconds =
+        expiresAt && p.status === 'TESTING'
+          ? Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000))
+          : 0;
+
       return [
+        selectedRoom.roomName,
+        toKstString(roomStartAt),
+        toKstString(roomEndAt),
+        durationMinutes || '',
         p.id.split('-')[0],
         p.name,
         p.email,
-        getProgressStatus(p),
+        p.status,
+        p.isOnline ? 'ONLINE' : 'OFFLINE',
+        toKstString(startedAt),
+        toKstString(expiresAt),
+        remainingSeconds,
+        toKstString(p.submittedAt),
         p.totalScore,
         ...qCells,
         p.violationCount,
-        p.startedAt ? new Date(p.startedAt).toLocaleString('ko-KR') : '',
       ];
     });
 

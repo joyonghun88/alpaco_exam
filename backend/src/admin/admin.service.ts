@@ -97,6 +97,7 @@ export class AdminService {
         status: p.status,
         isOnline: onlineMap[p.id] ?? false,
         startedAt: p.startedAt,
+        submittedAt: p.submittedAt,
         violationCount: p._count.securityLogs,
         inviteCode: p.invitationCode,
         totalScore,
