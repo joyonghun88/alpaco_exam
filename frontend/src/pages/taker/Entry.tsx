@@ -67,7 +67,7 @@ export default function Entry() {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
-      alert('移대찓??沅뚰븳???뱀씤?댁빞 ?낆옣??媛?ν빀?덈떎. 釉뚮씪?곗? 二쇱냼李??쇱そ???먮Ъ???꾩씠肄섏쓣 ?뚮윭 沅뚰븳???덉슜??二쇱꽭??');
+      alert('카메라 권한을 승인해야 합니다. 브라우저 주소창 왼쪽 자물쇠 아이콘에서 카메라 권한을 허용해 주세요.');
       setHasCameraPermission(false);
     }
   };
@@ -94,7 +94,7 @@ export default function Entry() {
 
     // 3. 移대찓???꾩닔 怨좎궗?μ씪 寃쎌슦 ?λ퉬 ?먭? ?뺤씤
     if (isRequireCamera && !hasCameraPermission) {
-      alert('?섍꼍 ?먭????꾨즺?섏? ?딆븯?듬땲?? 移대찓?쇰? ?쒖꽦?뷀빐 二쇱꽭??');
+      alert('환경 점검이 완료되지 않았습니다. 카메라를 활성화해 주세요.');
       setIsTermsOpen(false); // 紐⑤떖 ?リ린 (?λ퉬 ?먭? ?좊룄)
       return;
     }
@@ -121,7 +121,7 @@ export default function Entry() {
           }
           return;
         }
-        alert(`?몄쬆 ?ㅽ뙣: ${data.message || '?쒕쾭 ?ㅻ쪟'}`);
+        alert(`인증 실패: ${data.message || '서버 오류'}`);
         return;
       }
       
@@ -156,7 +156,7 @@ export default function Entry() {
       } catch (e) {}
       navigate('/exam/sandbox');
     } catch (e) {
-      alert('?쒕쾭? ?곌껐?????놁뒿?덈떎.');
+      alert('서버와 연결할 수 없습니다.');
     }
   };
 
@@ -188,12 +188,32 @@ export default function Entry() {
               <span>IBT SECURITY CENTER</span>
             </div>
             <h1 className="text-hero text-text-title leading-tight">
-              AI ?뚮뱶諛뺤뒪<br/>
-              <span className="text-primary-strong">?섍꼍 ?먭? ?湲곗떎</span>
+              {isRequireCamera ? (
+                <>
+                  카메라 모니터링 고사장<br />
+                  <span className="text-primary-strong">환경 점검을 진행해 주세요</span>
+                </>
+              ) : (
+                <>
+                  고사장 입장<br />
+                  <span className="text-primary-strong">초대 코드로 입장해 주세요</span>
+                </>
+              )}
             </h1>
             <p className="text-text-body text-body-reading leading-relaxed opacity-80">
-              ?쒗뿕 ?낆옣 ??移대찓???곹깭瑜??뺤씤??二쇱꽭?? <br/>
-              ?ㅼ떆媛?紐⑤땲?곕쭅 ?쒖뒪?쒖? ?쒗뿕 以??섑뿕?앹쓽 ?댄깉 諛?遺?뺥뻾?꾨? 媛먯??섎ŉ, ??怨쇱젙???뱁솕?⑸땲??
+              {isRequireCamera ? (
+                <>
+                  본 고사장은 카메라 모니터링이 필수입니다. 입장 전 카메라 권한을 허용하고 환경 점검을 완료해 주세요.
+                  <br />
+                  시험 중 부정행위 방지를 위해 영상이 모니터링될 수 있습니다.
+                </>
+              ) : (
+                <>
+                  본 고사장은 카메라 모니터링 없이 진행됩니다. 초대 코드를 입력하고 안내사항에 동의한 뒤 입장해 주세요.
+                  <br />
+                  네트워크가 안정적인 환경에서 진행해 주세요.
+                </>
+              )}
             </p>
           </div>
 
@@ -292,7 +312,7 @@ export default function Entry() {
                <div className="flex flex-col justify-between">
                   <div className="space-y-6">
                      <div className="relative">
-                        <label className="block text-xs font-black text-text-caption uppercase mb-3 ml-1">珥덈? 肄붾뱶 (Invitation)</label>
+                        <label className="block text-xs font-black text-text-caption uppercase mb-3 ml-1">초대 코드 (Invitation)</label>
                         <input 
                            type="text" 
                            placeholder="XXXX-XXXX-XXXX"
@@ -313,10 +333,10 @@ export default function Entry() {
 
                      <div className="bg-bg-section/70 rounded-3xl p-6 border-2 border-button-outline space-y-4">
                         <h4 className="text-sm font-black text-primary-strong flex items-center gap-2">
-                           <AlertTriangle size={16} /> 遺?뺥뻾??諛⑹? ?쒖빟
+                           <AlertTriangle size={16} /> 부정행위 방지 안내
                         </h4>
                         <p className="text-text-caption text-xs font-bold leading-relaxed">
-                           ?쒗뿕 以??꾩껜?붾㈃ ?댄깉, 罹?媛?? ?먮━ 鍮꾩? ?깆? 遺?뺥뻾?꾨줈 媛꾩＜?섎ŉ 利됱떆 媛먮룆愿?먭쾶 寃쎄퀬 ?뚮┝??李⑤떒?⑸땲??
+                           시험 중 브라우저 이탈, 화면 전환, 비정상적인 동작은 부정행위로 판단될 수 있으며, 관리자에게 경고가 전달될 수 있습니다.
                         </p>
                         <label className="flex items-center space-x-3 bg-white p-4 rounded-2xl border border-button-outline cursor-pointer hover:border-primary transition-all shadow-sm">
                            <input 
@@ -339,7 +359,7 @@ export default function Entry() {
                        onClick={resetState}
                        className="mt-4 px-6 py-2 bg-white/20 hover:bg-white/40 rounded-xl text-[11px] font-black transition-all"
                      >
-                        肄붾뱶 ?ㅼ떆 ?낅젰 (痍⑥냼)
+                        코드 다시 입력 (취소)
                      </button>
                   </div>
                   ) : (
@@ -352,7 +372,7 @@ export default function Entry() {
                         : 'bg-bg-section text-text-caption border-2 border-button-outline cursor-not-allowed'
                      }`}
                   >
-                     <span>{isRequireCamera && !hasCameraPermission ? '?λ퉬 ?먭? ?꾩슂' : '?됯? ?쒖옉?섍린'}</span>
+                     <span>{isRequireCamera && !hasCameraPermission ? '장비 점검 필요' : '평가 시작하기'}</span>
                      <ArrowRight size={24} strokeWidth={3} />
                   </button>
                   )}
@@ -392,9 +412,9 @@ export default function Entry() {
                 <div>
                   <div className="flex items-center space-x-3 mb-4">
                      <ShieldCheck size={32} className="text-primary" />
-                     <h2 className="text-3xl font-black text-text-title">媛쒖씤?뺣낫 ?섏쭛 諛?蹂댁븞 ?숈쓽</h2>
+                      <h2 className="text-3xl font-black text-text-title">개인정보 수집·이용 및 보안 동의</h2>
                   </div>
-                  <p className="text-sm text-text-caption font-bold">?됯???怨듭젙?깃낵 ?곗씠??蹂댄샇瑜??꾪빐 ?ㅼ쓬 ?ы빆??????숈쓽媛 ?꾩슂?⑸땲??</p>
+                   <p className="text-sm text-text-caption font-bold">시험 진행을 위해 아래 항목에 동의해 주세요.</p>
                 </div>
                 <button onClick={() => setIsTermsOpen(false)} className="p-2 hover:bg-bg-section rounded-full transition-colors">
                    <X size={24} className="text-text-caption" />
@@ -412,11 +432,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            媛쒖씤?뺣낫 ?섏쭛 諛??댁슜 ?숈쓽 (?꾩닔)
+                             개인정보 수집·이용 동의 (필수)
                              <span className="ml-2 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded">PIPA 준수</span>
                           </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            {standardTerms || '?쒗뿕 蹂몄씤 ?뺤씤 諛?遺?뺥뻾??諛⑹?瑜??꾪빐 ?깅챸, ?대찓???뺣낫瑜??섏쭛?⑸땲?? ?섏쭛???뺣낫??蹂??됯? 紐⑹쟻 ?댁쇅???⑸룄濡??ъ슜?섏? ?딆뒿?덈떎.'}
+                             {standardTerms || '시험 진행을 위해 이름, 이메일 등 필요한 정보를 수집합니다. 수집된 정보는 시험 운영 목적 외에는 사용되지 않습니다.'}
                          </p>
                       </div>
                    </label>
@@ -431,11 +451,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            ?곸긽 ?뺣낫(?뱀뭅硫붾씪) ?섏쭛 ?숈쓽 (?꾩닔)
-                            <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">?ㅼ떆媛??뱁솕</span>
+                             영상 정보(카메라) 수집 동의 (필수)
+                             <span className="ml-2 text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded">실시간 모니터링</span>
                          </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            {cameraTerms || '?ㅼ떆媛?媛먮룆???꾪빐 ?쒗뿕 以??섑뿕?앹쓽 ?덈㈃ 諛?二쇰? ?섍꼍 ?곸긽???섏쭛 諛???ν빀?덈떎. 蹂??쒖뒪?쒖? ?ъ깮??蹂댄샇瑜??꾪빐 ?뚯꽦(留덉씠??? ?섏쭛?섏? ?딆뒿?덈떎.'}
+                             {cameraTerms || '부정행위 방지를 위해 시험 중 카메라 영상이 모니터링될 수 있습니다. 오디오(마이크)는 수집하지 않습니다.'}
                          </p>
                       </div>
                    </label>
@@ -450,11 +470,11 @@ export default function Entry() {
                       />
                       <div>
                          <p className="font-black text-text-title text-base flex items-center mb-1">
-                            ?곗씠??蹂댁쑀 湲곌컙 諛??먮룞 ?뚭린 ?숈쓽 (?꾩닔)
-                            <span className="ml-2 text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded">30?????먮룞 ??젣</span>
+                             데이터 보관 기간 및 자동 삭제 동의 (필수)
+                             <span className="ml-2 text-[10px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded">30일 후 자동 삭제</span>
                          </p>
                          <p className="text-[11px] text-text-body font-medium leading-relaxed">
-                            ?섏쭛???곸긽 諛?濡쒓렇??寃곌낵 ?뺤젙 諛??댁쓽 ?쒓린 湲곌컙 怨좊젮瑜??꾪빐 <strong>?쒗뿕 醫낅즺?쇰줈遺??30?쇨컙 蹂닿?</strong>?섎ŉ, ?댄썑 ?쒖뒪?쒖뿉???먮룞?쇰줈 ?곴뎄 ?뚭린?⑸땲??
+                            수집된 로그/영상 등은 채점 및 이의제기 처리를 위해 <strong>시험 종료 후 30일간 보관</strong>되며, 이후 시스템에서 자동 삭제됩니다.
                          </p>
                       </div>
                    </label>
