@@ -28,7 +28,11 @@ async function bootstrap() {
   // 2. CORS 설정 (프로덕션에서는 허용 도메인 제한)
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
-    : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
+    : [
+        'http://localhost:5173',
+        'https://main.d1jp391cw5p5y.amplifyapp.com',
+        'https://main.d1jfxpi9oo1uai.amplifyapp.com',
+      ];
 
   app.enableCors({
     origin: (origin, callback) => {
