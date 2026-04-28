@@ -26,13 +26,18 @@ async function bootstrap() {
   }));
 
   // 2. CORS 설정 (프로덕션에서는 허용 도메인 제한)
-  const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
-    : [
-        'http://localhost:5173',
-        'https://main.d1jp391cw5p5y.amplifyapp.com',
-        'https://main.d1jfxpi9oo1uai.amplifyapp.com',
-      ];
+  // NOTE: CORS_ORIGINS는 "추가"로 취급합니다. (서버 환경변수가 오래된 값이어도 기본 허용 목록은 유지)
+  const defaultAllowedOrigins = [
+    'http://localhost:5173',
+    'https://main.d1jp391cw5p5y.amplifyapp.com',
+    'https://main.d1jfxpi9oo1uai.amplifyapp.com',
+  ];
+
+  const envAllowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((v) => v.trim()).filter(Boolean)
+    : [];
+
+  const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
 
   app.enableCors({
     origin: (origin, callback) => {
