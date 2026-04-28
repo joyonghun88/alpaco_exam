@@ -28,7 +28,7 @@ export class AdminService {
   }
 
   private getFrontendUrl() {
-    return process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
+    return process.env.FRONTEND_URL || 'https://main.d1jfxpi9oo1uai.amplifyapp.com';
   }
   // 媛먯궗 濡쒓렇 湲곕줉 ?占쏀떥由ы떚 (媛쒖씤?占쎈낫蹂댄샇占?以?占쎌슜)
   async logAdminAction(adminId: string, action: string, targetId?: string, details?: string, ip?: string) {
