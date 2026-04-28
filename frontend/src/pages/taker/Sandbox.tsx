@@ -387,6 +387,23 @@ export default function Sandbox() {
   };
 
   if (isSubmitted) {
+    const handleExit = () => {
+      try {
+        if (document.fullscreenElement) document.exitFullscreen();
+      } catch {}
+
+      // `window.close()` only works for windows opened by script.
+      // Fall back to moving to the entry page so the user can leave safely.
+      try {
+        if (window.opener) {
+          window.close();
+          return;
+        }
+      } catch {}
+
+      window.location.replace('/exam');
+    };
+
      return (
        <div className="min-h-screen bg-atomic-navy-900 flex flex-col items-center justify-center text-white p-10 text-center">
          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-10 border border-emerald-500/30">
@@ -395,8 +412,8 @@ export default function Sandbox() {
          <h1 className="text-4xl font-black mb-4">평가가 정상적으로 제출되었습니다.</h1>
          <p className="text-atomic-gray-400 text-lg mb-8">모든 응시 데이터와 모니터링 로그가 안전하게 저장되었습니다.<br/>브라우저 창을 닫고 퇴실해 주세요.</p>
         <button
-          onClick={() => window.close()}
-          className="px-10 py-4 bg-bg-section text-text-title border border-button-outline rounded-2xl font-black hover:bg-white transition-all"
+          onClick={handleExit}
+          className="px-10 py-4 bg-white text-atomic-navy-900 border border-white/30 rounded-2xl font-black hover:bg-atomic-gray-100 transition-all"
         >
           나가기
         </button>

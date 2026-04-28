@@ -3,9 +3,19 @@ import { Server, Socket } from 'socket.io';
 import { PrismaService } from '../prisma/prisma.service';
 import { PresenceService } from '../presence/presence.service';
 
-const allowedSocketOrigins = process.env.CORS_ORIGINS
+const defaultAllowedSocketOrigins = [
+  'http://localhost:5173',
+  'https://main.d1jp391cw5p5y.amplifyapp.com',
+  'https://main.d1jfxpi9oo1uai.amplifyapp.com',
+];
+
+const envAllowedSocketOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
-  : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
+  : [];
+
+const allowedSocketOrigins = Array.from(
+  new Set([...defaultAllowedSocketOrigins, ...envAllowedSocketOrigins]),
+);
 
 @WebSocketGateway({
   cors: {
