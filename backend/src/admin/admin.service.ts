@@ -570,6 +570,7 @@ export class AdminService {
         status: r.status,
         startAt: r.startAt,
         endAt: r.endAt,
+        durationMinutes: r.durationMinutes,
         waitingMessage: r.waitingMessage,
         waitingTitle: r.waitingTitle,
         iconType: r.iconType,

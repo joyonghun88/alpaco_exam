@@ -28,6 +28,7 @@ export declare class AdminService {
         status: import("@prisma/client").$Enums.ParticipantStatus;
         isOnline: boolean;
         startedAt: Date | null;
+        submittedAt: Date | null;
         violationCount: number;
         inviteCode: string;
         totalScore: number;
@@ -332,6 +333,7 @@ export declare class AdminService {
         status: import("@prisma/client").$Enums.RoomStatus;
         startAt: Date;
         endAt: Date;
+        durationMinutes: number;
         waitingMessage: string | null;
         waitingTitle: string | null;
         iconType: string | null;
