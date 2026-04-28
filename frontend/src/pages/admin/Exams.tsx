@@ -39,6 +39,8 @@ export default function Exams() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [assignmentForm, setAssignmentForm] = useState({ point: 10, orderNum: 1 });
+  const [pointDrafts, setPointDrafts] = useState<Record<string, number>>({});
+  const [savingPointIds, setSavingPointIds] = useState<Record<string, boolean>>({});
 
   const authHeader = { Authorization: `Bearer ${localStorage.getItem('adminToken')}` };
 
@@ -62,6 +64,17 @@ export default function Exams() {
       if (res.ok) setSelectedExam(await res.json());
     } catch {}
   };
+
+  useEffect(() => {
+    if (!selectedExam?.questions) return;
+    setPointDrafts((prev) => {
+      const next: Record<string, number> = { ...prev };
+      for (const q of selectedExam.questions || []) {
+        if (typeof next[q.questionId] !== 'number') next[q.questionId] = q.point;
+      }
+      return next;
+    });
+  }, [selectedExam?.id, selectedExam?.questions?.length]);
 
   useEffect(() => {
     fetchExams();
@@ -153,6 +166,35 @@ export default function Exams() {
       ]);
       fetchExamDetail(selectedExam.id);
     } catch {}
+  };
+
+  const handleUpdatePoint = async (questionId: string, point: number) => {
+    if (!selectedExam?.questions) return;
+    const item = selectedExam.questions.find((q) => q.questionId === questionId);
+    if (!item) return;
+
+    const nextPoint = Number.isFinite(point) ? Math.max(0, Math.round(point)) : item.point;
+    if (nextPoint === item.point) return;
+
+    setSavingPointIds((p) => ({ ...p, [questionId]: true }));
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/exams/${selectedExam.id}/questions/${questionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ orderNum: item.orderNum, point: nextPoint }),
+      });
+      if (res.ok) {
+        await fetchExamDetail(selectedExam.id);
+      } else {
+        alert('배점 저장에 실패했습니다.');
+        setPointDrafts((p) => ({ ...p, [questionId]: item.point }));
+      }
+    } catch {
+      alert('서버 연결 오류로 배점 저장에 실패했습니다.');
+      setPointDrafts((p) => ({ ...p, [questionId]: item.point }));
+    } finally {
+      setSavingPointIds((p) => ({ ...p, [questionId]: false }));
+    }
   };
 
   const categories = useMemo(() => {
@@ -327,9 +369,25 @@ export default function Exams() {
                               </div>
                               <p className="text-lg font-bold text-text-title">{typeof eq.question.content === 'string' ? eq.question.content : (eq.question.content.title || eq.question.content.text)}</p>
                            </div>
-                           <div className="bg-white border border-button-outline px-4 py-2 rounded-xl text-center">
+                           <div className="bg-white border border-button-outline px-4 py-2 rounded-xl text-center min-w-[92px]">
                               <p className="text-[9px] font-black text-text-caption uppercase">배점</p>
-                              <p className="text-sm font-black text-primary">{eq.point}pt</p>
+                              <div className="flex items-center justify-center space-x-2 mt-1">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={pointDrafts[eq.questionId] ?? eq.point}
+                                  onChange={(e) => {
+                                    const v = Number(e.target.value);
+                                    setPointDrafts((p) => ({ ...p, [eq.questionId]: v }));
+                                  }}
+                                  onBlur={() => handleUpdatePoint(eq.questionId, pointDrafts[eq.questionId] ?? eq.point)}
+                                  className="w-16 text-sm font-black text-primary text-center border border-button-outline rounded-lg px-2 py-1 focus:outline-none focus:border-primary"
+                                />
+                                <span className="text-[11px] font-black text-text-caption">pt</span>
+                              </div>
+                              {savingPointIds[eq.questionId] && (
+                                <div className="mt-1 text-[9px] font-black text-text-caption">저장중…</div>
+                              )}
                            </div>
                            <button 
                              onClick={() => handleRemoveQuestion(eq.questionId)}
