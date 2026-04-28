@@ -3,6 +3,8 @@ import { Clock, AlertOctagon, ChevronLeft, ChevronRight, CheckCircle2, Monitor, 
 import { io } from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
 import { SignalingClient, Role } from 'amazon-kinesis-video-streams-webrtc';
 import { API_BASE_URL, SOCKET_URL } from '../../config';
 import { sanitizeBasicHtml } from '../../utils/html';
@@ -596,7 +598,13 @@ export default function Sandbox() {
                          <span className="text-xs font-black uppercase tracking-widest">Question Passage</span>
                       </div>
                       <div className="prose prose-invert prose-lg max-w-none text-atomic-gray-100 font-medium leading-[2] md-preview-dark">
-                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{String(currentQ?.content?.passage || '')}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight]}
+                          urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}
+                        >
+                          {String(currentQ?.content?.passage || '')}
+                        </ReactMarkdown>
                        </div>
                     </div>
                  </section>

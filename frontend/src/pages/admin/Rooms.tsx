@@ -3,6 +3,7 @@ import { Plus, Monitor, Calendar, Clock, Trash2, Users, FileText, CheckCircle2, 
 import { API_BASE_URL } from '../../config';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 
 interface Room {
   id: string;
@@ -455,8 +456,8 @@ export default function Rooms() {
                                  <span className="bg-bg-section px-5 py-2 rounded-2xl text-xs font-black text-primary uppercase border border-button-outline">Question {eq.orderNum}</span>
                                  <span className="text-xs font-black text-text-caption uppercase tracking-widest">{eq.point} Points Assigned</span>
                               </div>
-                              <div className="prose prose-slate max-w-none mb-10">
-                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <div className="prose prose-slate max-w-none mb-10 md-preview">
+                                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                                     {typeof eq.question.content === 'string' ? eq.question.content : (eq.question.content as any).text || ''}
                                  </ReactMarkdown>
                                </div>

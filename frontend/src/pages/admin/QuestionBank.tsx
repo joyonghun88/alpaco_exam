@@ -5,6 +5,8 @@ import '@toast-ui/editor/dist/i18n/ko-kr';
 import { Editor } from '@toast-ui/react-editor';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github.css';
 import { API_BASE_URL } from '../../config';
 import { sanitizeBasicHtml, stripHtmlTags } from '../../utils/html';
 
@@ -773,7 +775,13 @@ export default function QuestionBank() {
                                 return actualPassage && (
                                    <div className="bg-bg-section/30 p-10 rounded-[2.5rem] border border-button-outline/50">
                                       <div className="prose prose-xl max-w-none text-text-title md-preview font-medium leading-loose">
-                                         <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{actualPassage}</ReactMarkdown>
+                                         <ReactMarkdown
+                                           remarkPlugins={[remarkGfm]}
+                                           rehypePlugins={[rehypeHighlight]}
+                                           urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}
+                                         >
+                                           {actualPassage}
+                                         </ReactMarkdown>
                                       </div>
                                    </div>
                                 );
