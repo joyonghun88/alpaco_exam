@@ -95,6 +95,12 @@ export class AuthService {
         cameraTerms: updated!.room.cameraTerms
       },
       startedAt: updated!.startedAt,
+      expiresAt: (() => {
+        const started = updated!.startedAt ? new Date(updated!.startedAt) : new Date();
+        const byDuration = new Date(started.getTime() + updated!.room.durationMinutes * 60 * 1000);
+        const roomEnd = new Date(updated!.room.endAt);
+        return byDuration < roomEnd ? byDuration : roomEnd;
+      })(),
     };
   }
 }

@@ -6,6 +6,7 @@ export declare class ExamService {
     private aws;
     private redis;
     constructor(prisma: PrismaService, aws: AwsService, redis: RedisService);
+    private getEffectiveEndAt;
     getQuestions(participantId: string): Promise<{
         id: any;
         type: any;

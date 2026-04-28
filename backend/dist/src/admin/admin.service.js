@@ -39,7 +39,7 @@ let AdminService = class AdminService {
         return `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; white-space: pre-line; line-height: 1.5;">${safe}</div>`;
     }
     getFrontendUrl() {
-        return process.env.FRONTEND_URL || 'https://main.d1jp391cw5p5y.amplifyapp.com';
+        return process.env.FRONTEND_URL || 'https://main.d1jfxpi9oo1uai.amplifyapp.com';
     }
     async logAdminAction(adminId, action, targetId, details, ip) {
         return this.prisma.adminLog.create({
@@ -274,7 +274,7 @@ let AdminService = class AdminService {
         const html = this.email.getInvitationTemplate(participant.name, participant.room.roomName, participant.invitationCode, inviteLink);
         const text = `안녕하세요 ${participant.name}님,\n\n[${participant.room.roomName}] 시험 초대 안내입니다.\n\n- 초대 코드: ${participant.invitationCode}\n- 접속 링크: ${inviteLink}\n`;
         try {
-            await this.email.sendEmail(participant.email, subject, html, text);
+            await this.email.sendEmail(participant.email, subject, html);
             return { success: true, message: `${participant.email}로 초대 링크가 전송되었습니다.` };
         }
         catch (e) {
@@ -392,7 +392,7 @@ let AdminService = class AdminService {
         for (const p of participants) {
             const frontendUrl = this.getFrontendUrl();
             const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
-            const subject = `[Alpaco Exam] ${p.room.roomName} 占쏙옙占쏙옙 占십댐옙 占싫놂옙`;
+            const subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
             const contentText = templateText
                 ? templateText
                     .replace(/{{name}}/g, p.name)
@@ -404,14 +404,22 @@ let AdminService = class AdminService {
                 ? this.toSimpleHtmlFromText(contentText)
                 : this.email.getInvitationTemplate(p.name, p.room.roomName, p.invitationCode, inviteLink);
             try {
-                await this.email.sendEmail(p.email, subject, html, contentText);
+                await this.email.sendEmail(p.email, subject, html);
                 results.push({ participantId: p.id, email: p.email, status: 'SUCCESS' });
             }
             catch (e) {
                 results.push({ participantId: p.id, email: p.email, status: 'FAILED', error: e?.message || String(e) });
             }
         }
-        return { success: true, count: participants.length, results };
+        const failedCount = results.filter((r) => r.status === 'FAILED').length;
+        const successCount = results.filter((r) => r.status === 'SUCCESS').length;
+        return {
+            success: failedCount === 0,
+            count: participants.length,
+            successCount,
+            failedCount,
+            results,
+        };
     }
     async sendBulkInvitations(roomId, template) {
         const participants = await this.prisma.participant.findMany({
@@ -422,7 +430,7 @@ let AdminService = class AdminService {
         for (const p of participants) {
             const frontendUrl = this.getFrontendUrl();
             const inviteLink = `${frontendUrl}/exam?code=${p.invitationCode}`;
-            let subject = `[Alpaco Exam] ${p.room.roomName} ?占쏀뿕 珥덌옙? ?占쎈궡`;
+            let subject = `[Alpaco Exam] ${p.room.roomName} 시험 초대 안내`;
             let content = template
                 .replace(/{{name}}/g, p.name)
                 .replace(/{{room}}/g, p.room.roomName)
@@ -430,14 +438,22 @@ let AdminService = class AdminService {
                 .replace(/{{link}}/g, inviteLink);
             try {
                 const html = this.toSimpleHtmlFromText(content);
-                await this.email.sendEmail(p.email, subject, html, content);
+                await this.email.sendEmail(p.email, subject, html);
                 results.push({ email: p.email, status: 'SUCCESS' });
             }
             catch (e) {
                 results.push({ email: p.email, status: 'FAILED', error: e.message });
             }
         }
-        return { success: true, count: participants.length, results };
+        const failedCount = results.filter((r) => r.status === 'FAILED').length;
+        const successCount = results.filter((r) => r.status === 'SUCCESS').length;
+        return {
+            success: failedCount === 0,
+            count: participants.length,
+            successCount,
+            failedCount,
+            results,
+        };
     }
     async getRoomSummary() {
         const now = new Date();

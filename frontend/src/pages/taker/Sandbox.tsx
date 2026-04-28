@@ -66,8 +66,14 @@ export default function Sandbox() {
 
     // 타이머 설정
     const startTimeStr = sessionStorage.getItem('startedAt');
+    const expiresAtStr = sessionStorage.getItem('expiresAt');
     const durationMinStr = sessionStorage.getItem('durationMinutes');
-    if (startTimeStr && durationMinStr) {
+
+    if (expiresAtStr) {
+       const expiresAt = new Date(expiresAtStr).getTime();
+       const remaining = Math.floor((expiresAt - Date.now()) / 1000);
+       setTimeLeft(remaining > 0 ? remaining : 0);
+    } else if (startTimeStr && durationMinStr) {
        const start = new Date(startTimeStr).getTime();
        const duration = parseInt(durationMinStr) * 60;
        const elapsed = Math.floor((Date.now() - start) / 1000);

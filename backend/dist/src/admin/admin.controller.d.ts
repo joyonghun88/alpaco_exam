@@ -481,6 +481,8 @@ export declare class AdminController {
     }): Promise<{
         success: boolean;
         count: number;
+        successCount: number;
+        failedCount: number;
         results: any[];
     }>;
     bulkAddParticipants(body: {
@@ -495,6 +497,8 @@ export declare class AdminController {
     }): Promise<{
         success: boolean;
         count: number;
+        successCount: number;
+        failedCount: number;
         results: any[];
     }>;
     uploadFile(file: any, req: any): Promise<{

@@ -12,6 +12,16 @@ export class ExamService {
     private redis: RedisService
   ) {}
 
+  private getEffectiveEndAt(participant: any): Date {
+    const roomEnd = new Date(participant.room.endAt);
+    if (!participant.startedAt) return roomEnd;
+
+    const started = new Date(participant.startedAt);
+    const durationMinutes = Number(participant.room.durationMinutes) || 0;
+    const byDuration = new Date(started.getTime() + durationMinutes * 60 * 1000);
+    return byDuration < roomEnd ? byDuration : roomEnd;
+  }
+
   async getQuestions(participantId: string) {
     // 1. Redis 캐시 확인
     let p = await this.redis.getParticipant(participantId);
@@ -40,6 +50,15 @@ export class ExamService {
 
     if (p.status === 'COMPLETED' || p.status === 'DISQUALIFIED') {
       throw new ForbiddenException('이미 제출 완료되었거나 실격된 응시자입니다.');
+    }
+
+    if (!p.startedAt || p.status !== 'TESTING') {
+      throw new ForbiddenException('?쒗뿕???쒖옉?섏? ?딆븯?듬땲??. 珥덈?肄붾뱶瑜? ?ㅼ떆 ?몄쬆?섏꽭??');
+    }
+
+    const effectiveEndAt = this.getEffectiveEndAt(p);
+    if (now > effectiveEndAt) {
+      throw new ForbiddenException('?쒗뿕 ???쒓컙??醫낅즺?섏뿀?듬땲??');
     }
 
     const examQuestions = await this.prisma.examQuestion.findMany({
@@ -86,10 +105,11 @@ export class ExamService {
     }
     
     if (!p || p.status !== 'TESTING') return;
+    if (!p.startedAt) return;
 
     const now = new Date();
-    const roomEnd = new Date(p.room.endAt);
-    if (now > roomEnd) return;
+    const effectiveEndAt = this.getEffectiveEndAt(p);
+    if (now > effectiveEndAt) return;
 
     // 2. DB 대신 Redis에 임시 저장 (Write-back 전략)
     await this.redis.setAnswer(participantId, questionId, answer);
@@ -115,6 +135,12 @@ export class ExamService {
     // 1. Redis에서 모든 임시 답안 가져오기
     const redisAnswers = await this.redis.getAnswers(participantId);
     // 프론트엔드에서 최종 전달된 답안이 있다면 우선순위 적용 (일종의 세이프티)
+    // 개인별 제한시간( startedAt + durationMinutes ) 적용
+    // 단, 제한시간이 지난 경우에도 "제출"은 가능하게 두어 자동제출/마감제출을 허용합니다.
+    // (답안 저장은 saveProgress에서 시간 초과 시 더 이상 진행되지 않음)
+    const effectiveEndAt = this.getEffectiveEndAt(p);
+    const isTimeOver = now > effectiveEndAt;
+
     const finalAnswers = { ...redisAnswers, ...manualAnswers };
 
     const examQuestions = await this.prisma.examQuestion.findMany({ 

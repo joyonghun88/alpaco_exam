@@ -24,6 +24,15 @@ let ExamService = class ExamService {
         this.aws = aws;
         this.redis = redis;
     }
+    getEffectiveEndAt(participant) {
+        const roomEnd = new Date(participant.room.endAt);
+        if (!participant.startedAt)
+            return roomEnd;
+        const started = new Date(participant.startedAt);
+        const durationMinutes = Number(participant.room.durationMinutes) || 0;
+        const byDuration = new Date(started.getTime() + durationMinutes * 60 * 1000);
+        return byDuration < roomEnd ? byDuration : roomEnd;
+    }
     async getQuestions(participantId) {
         let p = await this.redis.getParticipant(participantId);
         if (!p) {
@@ -46,6 +55,13 @@ let ExamService = class ExamService {
         if (p.status === 'COMPLETED' || p.status === 'DISQUALIFIED') {
             throw new common_1.ForbiddenException('이미 제출 완료되었거나 실격된 응시자입니다.');
         }
+        if (!p.startedAt || p.status !== 'TESTING') {
+            throw new common_1.ForbiddenException('?쒗뿕???쒖옉?섏? ?딆븯?듬땲??. 珥덈?肄붾뱶瑜? ?ㅼ떆 ?몄쬆?섏꽭??');
+        }
+        const effectiveEndAt = this.getEffectiveEndAt(p);
+        if (now > effectiveEndAt) {
+            throw new common_1.ForbiddenException('?쒗뿕 ???쒓컙??醫낅즺?섏뿀?듬땲??');
+        }
         const examQuestions = await this.prisma.examQuestion.findMany({
             where: { examId: p.room.examId },
             orderBy: { orderNum: 'asc' },
@@ -55,7 +71,7 @@ let ExamService = class ExamService {
                 }
             }
         });
-        return examQuestions.map(eq => {
+        return examQuestions.map((eq, index) => {
             const q = eq.question;
             const content = { ...q.content };
             if (q.parentId && q.parent && !content.passage) {
@@ -65,7 +81,7 @@ let ExamService = class ExamService {
                 id: q.id,
                 type: q.type,
                 content,
-                orderNum: eq.orderNum,
+                orderNum: index + 1,
                 point: eq.point
             };
         });
@@ -82,9 +98,11 @@ let ExamService = class ExamService {
         }
         if (!p || p.status !== 'TESTING')
             return;
+        if (!p.startedAt)
+            return;
         const now = new Date();
-        const roomEnd = new Date(p.room.endAt);
-        if (now > roomEnd)
+        const effectiveEndAt = this.getEffectiveEndAt(p);
+        if (now > effectiveEndAt)
             return;
         await this.redis.setAnswer(participantId, questionId, answer);
         return { success: true };
@@ -103,6 +121,8 @@ let ExamService = class ExamService {
             throw new common_1.ForbiddenException('현재 응시 중 상태가 아닙니다.');
         }
         const redisAnswers = await this.redis.getAnswers(participantId);
+        const effectiveEndAt = this.getEffectiveEndAt(p);
+        const isTimeOver = now > effectiveEndAt;
         const finalAnswers = { ...redisAnswers, ...manualAnswers };
         const examQuestions = await this.prisma.examQuestion.findMany({
             where: { examId: p.room.examId },

@@ -54,9 +54,15 @@ async function bootstrap() {
     app.use((0, helmet_1.default)({
         crossOriginResourcePolicy: false,
     }));
-    const allowedOrigins = process.env.CORS_ORIGINS
-        ? process.env.CORS_ORIGINS.split(',')
-        : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
+    const defaultAllowedOrigins = [
+        'http://localhost:5173',
+        'https://main.d1jp391cw5p5y.amplifyapp.com',
+        'https://main.d1jfxpi9oo1uai.amplifyapp.com',
+    ];
+    const envAllowedOrigins = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',').map((v) => v.trim()).filter(Boolean)
+        : [];
+    const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
     app.enableCors({
         origin: (origin, callback) => {
             if (!origin || allowedOrigins.some(o => origin.startsWith(o.trim()))) {

@@ -16,5 +16,6 @@ export declare class AuthService {
             cameraTerms: string | null;
         };
         startedAt: Date | null;
+        expiresAt: Date;
     }>;
 }

@@ -17,9 +17,15 @@ const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const prisma_service_1 = require("../prisma/prisma.service");
 const presence_service_1 = require("../presence/presence.service");
-const allowedSocketOrigins = process.env.CORS_ORIGINS
+const defaultAllowedSocketOrigins = [
+    'http://localhost:5173',
+    'https://main.d1jp391cw5p5y.amplifyapp.com',
+    'https://main.d1jfxpi9oo1uai.amplifyapp.com',
+];
+const envAllowedSocketOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
-    : ['http://localhost:5173', 'https://main.d1jp391cw5p5y.amplifyapp.com'];
+    : [];
+const allowedSocketOrigins = Array.from(new Set([...defaultAllowedSocketOrigins, ...envAllowedSocketOrigins]));
 let EventsGateway = class EventsGateway {
     prisma;
     presence;

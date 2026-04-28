@@ -138,6 +138,7 @@ export default function Entry() {
 
       sessionStorage.setItem('participantId', data.participantId);
       sessionStorage.setItem('startedAt', data.startedAt);
+      if (data.expiresAt) sessionStorage.setItem('expiresAt', data.expiresAt);
       sessionStorage.setItem('durationMinutes', data.examRoom.durationMinutes.toString());
       sessionStorage.setItem('isRequireCamera', requireCam ? 'true' : 'false');
 

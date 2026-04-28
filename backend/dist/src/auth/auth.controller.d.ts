@@ -19,5 +19,6 @@ export declare class AuthController {
             cameraTerms: string | null;
         };
         startedAt: Date | null;
+        expiresAt: Date;
     }>;
 }

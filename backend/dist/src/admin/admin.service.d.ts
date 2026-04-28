@@ -314,11 +314,15 @@ export declare class AdminService {
     sendSelectedInvitations(participantIds: string[], template: string): Promise<{
         success: boolean;
         count: number;
+        successCount: number;
+        failedCount: number;
         results: any[];
     }>;
     sendBulkInvitations(roomId: string, template: string): Promise<{
         success: boolean;
         count: number;
+        successCount: number;
+        failedCount: number;
         results: any[];
     }>;
     getRoomSummary(): Promise<{
