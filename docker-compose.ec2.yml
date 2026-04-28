@@ -63,6 +63,11 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    environment:
+      # Admin API allowlist (stable egress IP / VPN exit node IP goes here).
+      # Keep this to your gateway public IP for now.
+      - ADMIN_ALLOW_SNIPPET=allow 218.234.61.40;
+      - ADMIN_DENY_ALL=deny all;
     ports:
       - "80:80"
     depends_on:
@@ -86,4 +91,3 @@ services:
 volumes:
   redis_data:
   postgres_data:
-
