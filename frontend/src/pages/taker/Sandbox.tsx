@@ -595,7 +595,7 @@ export default function Sandbox() {
                          <Columns size={18} />
                          <span className="text-xs font-black uppercase tracking-widest">Question Passage</span>
                       </div>
-                      <div className="prose prose-invert prose-lg max-w-none text-atomic-gray-100 font-medium leading-[2] md-preview">
+                      <div className="prose prose-invert prose-lg max-w-none text-atomic-gray-100 font-medium leading-[2] md-preview-dark">
                          <ReactMarkdown remarkPlugins={[remarkGfm]} urlTransform={(url) => url.startsWith('http') || url.startsWith('data:') ? url : `${API_BASE_URL}${url}`}>{String(currentQ?.content?.passage || '')}</ReactMarkdown>
                        </div>
                     </div>
