@@ -168,7 +168,15 @@ export default function Sandbox() {
 
     try {
       const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=MASTER`);
-      const creds = await res.json();
+      const creds = await res.json().catch(() => ({} as any));
+
+      if (!res.ok) {
+        const msg = (creds as any)?.message || 'KVS 인증 정보를 가져오지 못했습니다.';
+        throw new Error(msg);
+      }
+      if (!creds?.channelArn || !creds?.signalingEndpoint) {
+        throw new Error('KVS 채널 정보가 올바르지 않습니다. (channelArn/signalingEndpoint 없음)');
+      }
 
       console.log('KVS Master Credentials received:', creds);
       const signalingClient = new SignalingClient({
@@ -272,6 +280,8 @@ export default function Sandbox() {
       signalingClient.open();
     } catch (err) {
       console.error('[KVS Master] Stream Init Failed', err);
+      // Monitoring is secondary to taking the exam. Keep the exam usable even if KVS fails.
+      alert(`카메라 모니터링 연결에 실패했습니다: ${(err as any)?.message || err}`);
     }
   }, [participantId]);
 

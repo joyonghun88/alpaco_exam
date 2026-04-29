@@ -85,7 +85,9 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
       try {
         setStatus('자격증명 확인...');
         const res = await fetch(`${API_BASE_URL}/exam/${participantId}/kvs-credentials?role=VIEWER`);
-        const creds = await res.json();
+        const creds = await res.json().catch(() => ({} as any));
+        if (!res.ok) throw new Error((creds as any)?.message || 'KVS 인증 정보를 가져오지 못했습니다.');
+        if (!creds?.channelArn || !creds?.signalingEndpoint) throw new Error('KVS 채널 정보가 올바르지 않습니다.');
 
         console.log('KVS Credentials received:', creds);
         signalingClient = new SignalingClient({
@@ -173,6 +175,7 @@ function KvsViewer({ participantId, onClose }: { participantId: string, onClose:
       } catch (err: any) {
         setStatus(`에러: ${err.message}`);
         console.error('Failed to start KvsViewer', err);
+        alert(`모니터링 뷰어 연결에 실패했습니다: ${err?.message || err}`);
       }
     }
 

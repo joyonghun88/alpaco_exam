@@ -258,6 +258,12 @@ export class ExamService {
     
     console.log(`[ExamService] Signaling Endpoint for ${role}:`, signalingEndpoint);
 
+    if (!signalingEndpoint) {
+      throw new BadRequestException(
+        'KVS signaling endpoint를 가져올 수 없습니다. AWS Kinesis Video Streams 권한(GetSignalingChannelEndpoint) 및 리전 설정을 확인해 주세요.'
+      );
+    }
+
     return {
       channelArn: channel.ChannelARN,
       channelName: channel.ChannelName,
