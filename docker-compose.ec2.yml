@@ -65,6 +65,9 @@ services:
         max-file: "3"
     ports:
       - "80:80"
+    environment:
+      - ADMIN_BASIC_AUTH_USER=${ADMIN_BASIC_AUTH_USER}
+      - ADMIN_BASIC_AUTH_PASS=${ADMIN_BASIC_AUTH_PASS}
     depends_on:
       - backend
 
