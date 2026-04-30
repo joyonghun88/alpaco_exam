@@ -226,9 +226,9 @@ export class AdminService {
         endAt: endDate,
         status: 'READY',
         isRequireCamera,
-        waitingMessage: '?占쏀뿕 ?占쎌옉 ?占쎌엯?占쎈떎. ?占쎌떆占??占쎄린??二쇱꽭??',
-        standardTerms: standardTerms || '?占쏀뿕 蹂몄씤 ?占쎌씤 占?遺?占쏀뻾??諛⑼옙?占??占쏀빐 ?占쎈챸, ?占쎈찓???占쎈낫占??占쎌쭛?占쎈땲??',
-        cameraTerms: cameraTerms || '?占쎌떆占?媛먮룆???占쏀빐 ?占쏀뿕 占??占쏀뿕?占쎌쓽 ?占쎈㈃ 占?二쇽옙? ?占쎄꼍 ?占쎌긽???占쎌쭛 占??占?占쏀빀?占쎈떎.'
+        waitingMessage: '고사장 오픈 전입니다. 잠시만 기다려 주세요.',
+        standardTerms: standardTerms || '응시자는 시험 시작 전 안내사항을 확인해 주세요.\n부정행위(대리응시, 자료 공유/열람, 녹화/촬영 등)는 금지됩니다.',
+        cameraTerms: cameraTerms || '카메라 모니터링이 필요한 시험입니다.\n응시 중 카메라를 켜고, 주변 환경을 정리한 뒤 응시해 주세요.'
       }
     });
   }
@@ -236,7 +236,7 @@ export class AdminService {
   async deleteRoom(adminId: string, id: string) {
     // 沅뚰븳 泥댄겕: 占???占쏙옙??SUPER_ADMIN占?媛??(?占쎌떆)
     const admin = await this.prisma.admin.findUnique({ where: { id: adminId } });
-    if (admin?.role !== 'SUPER_ADMIN') throw new Error("占???占쏙옙 沅뚰븳???占쎌뒿?占쎈떎.");
+    if (admin?.role !== 'SUPER_ADMIN') throw new Error('최고관리자만 고사장을 삭제할 수 있습니다.');
 
     await this.logAdminAction(adminId, 'ROOM_DELETE', id);
     return this.prisma.examRoom.delete({ where: { id } });
@@ -262,7 +262,7 @@ export class AdminService {
     } else {
       room = await this.prisma.examRoom.findFirst();
     }
-    if (!room) throw new Error("?占쏀뿕?占쎌씠 ?占쎌뒿?占쎈떎.");
+    if (!room) throw new Error('고사장이 존재하지 않습니다.');
 
     const CodeStr = Math.random().toString(36).substring(2, 8).toUpperCase();
     const inviteCode = `ALPACO-${CodeStr}`;
@@ -460,7 +460,7 @@ export class AdminService {
             .replace(/{{room}}/g, p.room.roomName)
             .replace(/{{code}}/g, p.invitationCode)
             .replace(/{{link}}/g, inviteLink)
-        : `占싫놂옙占싹쇽옙占쏙옙 ${p.name}占쏙옙,\n\n[${p.room.roomName}] 占쏙옙占쏙옙 占십댐옙 占싫놂옙占쌉니댐옙.\n\n- 占십댐옙 占쌘듸옙: ${p.invitationCode}\n- 占쏙옙占쏙옙 占쏙옙크: ${inviteLink}\n`;
+        : `안녕하세요 ${p.name}님,\n\n[${p.room.roomName}] 시험 초대장입니다.\n\n- 참여 코드: ${p.invitationCode}\n- 접속 링크: ${inviteLink}\n`;
 
       const html = templateText
         ? this.toSimpleHtmlFromText(contentText)
@@ -664,11 +664,11 @@ export class AdminService {
 
   async updateRoom(id: string, data: { roomName?: string, durationMinutes?: number, startAt?: string, endAt?: string, isRequireCamera?: boolean }) {
     const current = await this.prisma.examRoom.findUnique({ where: { id } });
-    if (!current) throw new Error("怨좎궗???占쎈낫媛 議댁옱?占쏙옙? ?占쎌뒿?占쎈떎.");
+    if (!current) throw new Error('고사장 정보가 존재하지 않습니다.');
     
     // Room must be editable only before starting.
     if (current.status !== 'READY') {
-      throw new Error("?占쏙옙? ?占쎌옉??怨좎궗?占쏙옙? ?占쎈낫占??占쎌젙?????占쎌뒿?占쎈떎.");
+      throw new Error('이미 시작한 고사장은 설정을 변경할 수 없습니다.');
     }
 
     const updateData: any = { ...data };
